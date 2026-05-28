@@ -1476,106 +1476,98 @@ function startBattleMusic(){
     battleMusicCtx=AC;
     battleMusicPlaying=true;
 
-    var master=AC.createGain();master.gain.value=0.07;
+    var master=AC.createGain();master.gain.value=0.06;
     master.connect(AC.destination);
     battleMusicNodes.push(master);
 
-    // Energetic pentatonic riff — fast, exciting, game-like
-    // Using minor pentatonic for tension: A minor pentatonic
-    var riff=[220,261,293,349,392,440,523,587,659,784,880];
-    var bassNotes=[110,130,146,174,196];
-    var step=0;
-
-    // Driving 8th-note bass line
-    function bassLine(){
+    // Retro chiptune: fast arpeggios, square waves, NES-style
+    // A minor pentatonic: A C D E G (bass) + octave up
+    var bass=[110,130.8,146.8,164.8,196,220];
+    var mel =[440,523,587,659,784,880,1047,784,659,587,523,440];
+    // Driving 16th-note bass arpeggio
+    var bStep=0;
+    var bassPat=[0,2,4,2,1,2,4,2,0,2,3,2,1,3,4,3];
+    function bassArp(){
       if(!battleMusicPlaying)return;
       var t=AC.currentTime;
-      var note=bassNotes[step%bassNotes.length];
-      var osc=AC.createOscillator(),g=AC.createGain();
-      osc.type='sawtooth';
-      osc.frequency.value=note;
-      var flt=AC.createBiquadFilter();flt.type='lowpass';flt.frequency.value=400;flt.Q.value=1.5;
-      osc.connect(flt);flt.connect(g);g.connect(master);
+      var freq=bass[bassPat[bStep%bassPat.length]%bass.length];
+      var o=AC.createOscillator(),g=AC.createGain();
+      o.type='square';o.frequency.value=freq;
+      o.connect(g);g.connect(master);
       g.gain.setValueAtTime(0,t);
-      g.gain.linearRampToValueAtTime(0.55,t+0.01);
-      g.gain.setValueAtTime(0.55,t+0.1);
-      g.gain.linearRampToValueAtTime(0,t+0.14);
-      osc.start(t);osc.stop(t+0.16);
-      battleMusicNodes.push(osc,g,flt);
-      step++;
-      setTimeout(bassLine,150);
+      g.gain.linearRampToValueAtTime(0.35,t+0.005);
+      g.gain.setValueAtTime(0.35,t+0.06);
+      g.gain.linearRampToValueAtTime(0,t+0.075);
+      o.start(t);o.stop(t+0.08);
+      battleMusicNodes.push(o,g);
+      bStep++;
+      setTimeout(bassArp,80); // 16th notes ~150bpm
     }
 
-    // Bright melody on top
-    var melStep=0;
-    var melPat=[7,7,9,7,5,3, 7,9,12,9,7,5, 3,5,7,9,7,5,3,2];
-    function melody(){
+    // Bright melody - NES square lead
+    var mStep=0;
+    var melPat=[0,0,3,5,7,5,3,0, 1,1,3,6,8,6,3,1, 2,4,6,8,9,8,6,4, 0,2,4,6,4,2,0,2];
+    function melLead(){
       if(!battleMusicPlaying)return;
       var t=AC.currentTime;
-      var freq=riff[melPat[melStep%melPat.length]%riff.length];
-      var osc=AC.createOscillator(),g=AC.createGain();
-      osc.type='square';
-      osc.frequency.value=freq;
-      var flt=AC.createBiquadFilter();flt.type='bandpass';flt.frequency.value=freq*2;flt.Q.value=2;
-      osc.connect(flt);flt.connect(g);g.connect(master);
-      var vel=melStep%4===0?0.4:0.25;
-      g.gain.setValueAtTime(0,t);
-      g.gain.linearRampToValueAtTime(vel,t+0.02);
-      g.gain.setValueAtTime(vel*0.6,t+0.1);
-      g.gain.exponentialRampToValueAtTime(0.001,t+0.22);
-      osc.start(t);osc.stop(t+0.25);
-      battleMusicNodes.push(osc,g,flt);
-      melStep++;
-      setTimeout(melody,melStep%2===0?210:190);
+      var freq=mel[melPat[mStep%melPat.length]%mel.length];
+      // Only play on beat subdivisions - 8th notes
+      if(mStep%2===0){
+        var o=AC.createOscillator(),g=AC.createGain();
+        o.type='square';o.frequency.value=freq;
+        var flt=AC.createBiquadFilter();flt.type='highpass';flt.frequency.value=200;
+        o.connect(flt);flt.connect(g);g.connect(master);
+        var vel=mStep%8===0?0.3:0.18;
+        g.gain.setValueAtTime(0,t);
+        g.gain.linearRampToValueAtTime(vel,t+0.008);
+        g.gain.setValueAtTime(vel*0.7,t+0.1);
+        g.gain.linearRampToValueAtTime(0,t+0.16);
+        o.start(t);o.stop(t+0.18);
+        battleMusicNodes.push(o,g,flt);
+      }
+      mStep++;
+      setTimeout(melLead,80);
     }
 
-    // Punchy kick drum
-    var kickStep=0;
-    function kick(){
+    // NES-style drum: kick + snare noise
+    var dStep=0;
+    var drumPat=['K','.','.','S','K','.','.','S','K','.','K','.','.','.','S','.'];
+    function drum(){
       if(!battleMusicPlaying)return;
       var t=AC.currentTime;
-      var osc=AC.createOscillator(),g=AC.createGain();
-      osc.type='sine';
-      osc.frequency.setValueAtTime(180,t);
-      osc.frequency.exponentialRampToValueAtTime(40,t+0.07);
-      osc.connect(g);g.connect(master);
-      g.gain.setValueAtTime(0,t);
-      g.gain.linearRampToValueAtTime(0.9,t+0.005);
-      g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
-      osc.start(t);osc.stop(t+0.14);
-      battleMusicNodes.push(osc,g);
-      kickStep++;
-      // Pattern: kick on beats 1 and 3 of a 4/4 bar
-      var pat=[true,false,true,false];
-      var next=pat[kickStep%4]?300:300;
-      setTimeout(kick,next);
+      var hit=drumPat[dStep%drumPat.length];
+      if(hit==='K'){
+        // Kick: sine pitch drop
+        var o=AC.createOscillator(),g=AC.createGain();
+        o.type='sine';
+        o.frequency.setValueAtTime(200,t);
+        o.frequency.exponentialRampToValueAtTime(40,t+0.06);
+        o.connect(g);g.connect(master);
+        g.gain.setValueAtTime(0,t);
+        g.gain.linearRampToValueAtTime(0.8,t+0.003);
+        g.gain.exponentialRampToValueAtTime(0.001,t+0.1);
+        o.start(t);o.stop(t+0.12);
+        battleMusicNodes.push(o,g);
+      } else if(hit==='S'){
+        // Snare: white noise burst
+        var buf=AC.createBuffer(1,Math.floor(AC.sampleRate*0.06),AC.sampleRate);
+        var d=buf.getChannelData(0);
+        for(var i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.2);
+        var src=AC.createBufferSource(),g2=AC.createGain();
+        src.buffer=buf;src.connect(g2);g2.connect(master);
+        g2.gain.setValueAtTime(0.45,t);
+        src.start(t);
+        battleMusicNodes.push(src,g2);
+      }
+      dStep++;
+      setTimeout(drum,160); // 8th notes
     }
 
-    // Snare on beats 2+4
-    var snareStep=0;
-    function snare(){
-      if(!battleMusicPlaying)return;
-      var t=AC.currentTime;
-      var buf=AC.createBuffer(1,Math.floor(AC.sampleRate*0.08),AC.sampleRate);
-      var d=buf.getChannelData(0);
-      for(var i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.5);
-      var src=AC.createBufferSource(),g=AC.createGain();
-      src.buffer=buf;
-      src.connect(g);g.connect(master);
-      g.gain.setValueAtTime(snareStep%4===1||snareStep%4===3?0.5:0.1,t);
-      src.start(t);
-      battleMusicNodes.push(src,g);
-      snareStep++;
-      setTimeout(snare,150);
-    }
-
-    setTimeout(bassLine,0);
-    setTimeout(melody,50);
-    setTimeout(kick,0);
-    setTimeout(snare,75);
+    setTimeout(bassArp,0);
+    setTimeout(melLead,40);
+    setTimeout(drum,0);
   }catch(e){}
 }
-
 function stopBattleMusic(){
   battleMusicPlaying=false;
   battleMusicNodes.forEach(function(n){try{if(n.stop)n.stop();if(n.disconnect)n.disconnect();}catch(e){}});
