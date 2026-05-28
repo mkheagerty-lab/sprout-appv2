@@ -1671,25 +1671,29 @@ async function generateLangImage(){
     if(!imgUrl) throw new Error('No output_url');
 
     // Step 3: Show image
-    const img = new Image();
-    img.style.cssText='width:100%;height:100%;object-fit:cover;display:block';
-    img.alt = q.desc;
+    // Fetch as blob → FileReader → base64 (avoids CORS canvas taint)
+    const cacheKey='sprout-img-lang-'+langCat+'-'+(langIdx%LANG_SCENES[langCat].length);
     const timer = setTimeout(function(){_langImgFallback(q,wrap,imgEl,loading,btn);},30000);
-    img.onload = function(){
-      clearTimeout(timer);
-      if(loading)loading.style.display='none';
-      if(wrap){wrap.style.display='flex';wrap.innerHTML='';wrap.appendChild(img);}
-      if(btn){btn.disabled=false;btn.textContent='✨ Repaint';btn.style.opacity='1';}
-      // Cache the image
-      try{
-        var cv2=document.createElement('canvas');cv2.width=img.naturalWidth||512;cv2.height=img.naturalHeight||512;
-        cv2.getContext('2d').drawImage(img,0,0);
-        var b64=cv2.toDataURL('image/jpeg',0.82);
-        localStorage.setItem('sprout-img-lang-'+langCat+'-'+langIdx,b64);
-      }catch(e){}
-    };
-    img.onerror = function(){clearTimeout(timer);_langImgFallback(q,wrap,imgEl,loading,btn);};
-    img.src = imgUrl;
+    fetch(imgUrl).then(function(r){
+      if(!r.ok)throw new Error('fetch '+r.status);
+      return r.blob();
+    }).then(function(blob){
+      const reader=new FileReader();
+      reader.onload=function(){
+        clearTimeout(timer);
+        const b64=reader.result;
+        try{localStorage.setItem(cacheKey,b64);}catch(e){}
+        const img=document.createElement('img');
+        img.style.cssText='width:100%;height:100%;object-fit:cover;display:block';
+        img.alt=q.desc;
+        img.src=b64;
+        if(loading)loading.style.display='none';
+        if(wrap){wrap.style.display='flex';wrap.innerHTML='';wrap.appendChild(img);}
+        if(btn){btn.disabled=false;btn.textContent='✨ Repaint';btn.style.opacity='1';}
+      };
+      reader.onerror=function(){clearTimeout(timer);_langImgFallback(q,wrap,imgEl,loading,btn);};
+      reader.readAsDataURL(blob);
+    }).catch(function(){_langImgFallback(q,wrap,imgEl,loading,btn);});
 
   }catch(e){
     console.error('generateLangImage error:',e);
@@ -1773,24 +1777,26 @@ async function generateStoryImage(){
     const imgUrl=deepData.output_url;
     if(!imgUrl)throw new Error('No output_url — '+JSON.stringify(deepData));
 
-    // Step 3: Load and display image
-    const img=new Image();img.className='story-ai-img';img.alt='Story scene';
+    // Step 3: Fetch as blob → FileReader → base64 (avoids CORS canvas taint)
     const timer=setTimeout(function(){_storyFallback(s,inner,loading,aib,'Timed out');},35000);
-    img.onload=function(){
-      clearTimeout(timer);
-      if(loading)loading.style.display='none';
-      if(inner){inner.style.display='flex';inner.style.padding='0';inner.innerHTML='';inner.appendChild(img);}
-      if(aib){aib.disabled=false;aib.textContent='✨ Repaint';aib.style.opacity='1';}
-      // Cache the image as base64 for future sessions
-      try{
-        var cv2=document.createElement('canvas');cv2.width=img.naturalWidth||512;cv2.height=img.naturalHeight||512;
-        cv2.getContext('2d').drawImage(img,0,0);
-        var b64=cv2.toDataURL('image/jpeg',0.82);
-        localStorage.setItem('sprout-img-story-'+storyIdx,b64);
-      }catch(e){}
-    };
-    img.onerror=function(){clearTimeout(timer);_storyFallback(s,inner,loading,aib,'Image load failed');};
-    img.src=imgUrl;
+    fetch(imgUrl).then(function(r){
+      if(!r.ok)throw new Error('fetch '+r.status);
+      return r.blob();
+    }).then(function(blob){
+      const reader=new FileReader();
+      reader.onload=function(){
+        clearTimeout(timer);
+        const b64=reader.result;
+        try{localStorage.setItem('sprout-img-story-'+storyIdx,b64);}catch(e){}
+        const img=document.createElement('img');img.className='story-ai-img';img.alt='Story scene';
+        img.src=b64;
+        if(loading)loading.style.display='none';
+        if(inner){inner.style.display='flex';inner.style.padding='0';inner.innerHTML='';inner.appendChild(img);}
+        if(aib){aib.disabled=false;aib.textContent='✨ Repaint';aib.style.opacity='1';}
+      };
+      reader.onerror=function(){clearTimeout(timer);_storyFallback(s,inner,loading,aib,'Read error');};
+      reader.readAsDataURL(blob);
+    }).catch(function(e){clearTimeout(timer);_storyFallback(s,inner,loading,aib,e.message);});
 
   }catch(e){
     console.error('generateStoryImage error:',e);
