@@ -590,14 +590,14 @@ var TW2=24,HALF=12,camX=0,camY=0,lastAnimT=0;
 
 function resize(){
   cv.width=innerWidth;cv.height=innerHeight;
-  TW2=Math.round(Math.min(innerWidth/18,innerHeight/14));
+  TW2=Math.round(Math.min(innerWidth/12,innerHeight/10));
   HALF=TW2/2;
 }
 
 var FLOOR_THEMES=[
-  {wall:'#1a1528',wallTop:'#2a2040',floor:'#2c2438',floorAlt:'#342c44',torch:'#ff8800'},
-  {wall:'#0a1428',wallTop:'#142040',floor:'#0e1c34',floorAlt:'#122040',torch:'#00aaff'},
-  {wall:'#1e0a08',wallTop:'#2e1408',floor:'#1a1008',floorAlt:'#221408',torch:'#ff4400'}
+  {wall:'#2a1e44',wallTop:'#4a3580',floor:'#1e1635',floorAlt:'#2a1e48',torch:'#ff9900'},
+  {wall:'#0d1e3a',wallTop:'#1a3a70',floor:'#0a1628',floorAlt:'#0e1e38',torch:'#00ccff'},
+  {wall:'#3a0e08',wallTop:'#6a1e10',floor:'#2a0e08',floorAlt:'#3a1208',torch:'#ff5500'}
 ];
 
 function worldToScreen(wx,wy){
@@ -671,7 +671,7 @@ function drawPlayer(wx,wy,t){
 function drawFloor(t){
   var map=FLOOR_MAPS[G.floor],rows=map.length,cols=map[0].length;
   var theme=FLOOR_THEMES[G.floor];
-  ctx.fillStyle='#06040e';ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle='#0a0618';ctx.fillRect(0,0,cv.width,cv.height);
   var torchPos=[];
   for(var r=0;r<rows;r++){
     for(var c=0;c<cols;c++){
@@ -690,7 +690,7 @@ function drawFloor(t){
   for(var ei=0;ei<flEntities.length;ei++){drawEntity(flEntities[ei],t);}
   drawPlayer(G.wx,G.wy,t);
   var vig=ctx.createRadialGradient(cv.width/2,cv.height/2,cv.width*0.2,cv.width/2,cv.height/2,cv.width*0.75);
-  vig.addColorStop(0,'transparent');vig.addColorStop(1,'rgba(0,0,0,.62)');
+  vig.addColorStop(0,'transparent');vig.addColorStop(1,'rgba(0,0,0,.38)');
   ctx.fillStyle=vig;ctx.fillRect(0,0,cv.width,cv.height);
 }
 
@@ -905,7 +905,7 @@ function restartFromFloor1(){
 
 function exitGame(){
   document.getElementById('fail-screen').style.display='none';
-  if(window.parent&&window.parent!==window){try{window.parent.postMessage('closeGame','*');}catch(e){}}
+  stopBattleMusic();if(window.parent&&window.parent!==window){try{window.parent.postMessage('closeGame','*');}catch(e){}}
   toast('Thanks for playing!');
 }
 
@@ -973,6 +973,7 @@ function showCompletionScreen(){
 }
 
 function playAgain(){
+  stopBattleMusic();startBattleMusic();
   document.getElementById('complete-screen').style.display='none';
   G.hp=G.maxHp=100;G.gems=0;G.stars=0;G.xp=0;G.xpNext=100;G.level=1;G.floor=0;
   G.cleared=new Set();G.wx=1.5;G.wy=28.5;G.px=1;G.py=28;
@@ -982,6 +983,7 @@ function playAgain(){
 }
 
 function returnToApp(){
+  stopBattleMusic();
   document.getElementById('complete-screen').style.display='none';
   if(window.parent&&window.parent!==window){try{window.parent.postMessage('closeGame','*');}catch(e){}}
   toast('Thanks for playing!');
@@ -1461,6 +1463,125 @@ function bShape(body){
 }
 
 // -- INIT ---------------------------------------------------
+
+// ── BATTLE MUSIC ───────────────────────────────────────────
+var battleMusicPlaying=false;
+var battleMusicNodes=[];
+var battleMusicCtx=null;
+
+function startBattleMusic(){
+  if(battleMusicPlaying)return;
+  try{
+    if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();
+    battleMusicCtx=AC;
+    battleMusicPlaying=true;
+
+    var master=AC.createGain();master.gain.value=0.07;
+    master.connect(AC.destination);
+    battleMusicNodes.push(master);
+
+    // Energetic pentatonic riff — fast, exciting, game-like
+    // Using minor pentatonic for tension: A minor pentatonic
+    var riff=[220,261,293,349,392,440,523,587,659,784,880];
+    var bassNotes=[110,130,146,174,196];
+    var step=0;
+
+    // Driving 8th-note bass line
+    function bassLine(){
+      if(!battleMusicPlaying)return;
+      var t=AC.currentTime;
+      var note=bassNotes[step%bassNotes.length];
+      var osc=AC.createOscillator(),g=AC.createGain();
+      osc.type='sawtooth';
+      osc.frequency.value=note;
+      var flt=AC.createBiquadFilter();flt.type='lowpass';flt.frequency.value=400;flt.Q.value=1.5;
+      osc.connect(flt);flt.connect(g);g.connect(master);
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.55,t+0.01);
+      g.gain.setValueAtTime(0.55,t+0.1);
+      g.gain.linearRampToValueAtTime(0,t+0.14);
+      osc.start(t);osc.stop(t+0.16);
+      battleMusicNodes.push(osc,g,flt);
+      step++;
+      setTimeout(bassLine,150);
+    }
+
+    // Bright melody on top
+    var melStep=0;
+    var melPat=[7,7,9,7,5,3, 7,9,12,9,7,5, 3,5,7,9,7,5,3,2];
+    function melody(){
+      if(!battleMusicPlaying)return;
+      var t=AC.currentTime;
+      var freq=riff[melPat[melStep%melPat.length]%riff.length];
+      var osc=AC.createOscillator(),g=AC.createGain();
+      osc.type='square';
+      osc.frequency.value=freq;
+      var flt=AC.createBiquadFilter();flt.type='bandpass';flt.frequency.value=freq*2;flt.Q.value=2;
+      osc.connect(flt);flt.connect(g);g.connect(master);
+      var vel=melStep%4===0?0.4:0.25;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(vel,t+0.02);
+      g.gain.setValueAtTime(vel*0.6,t+0.1);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.22);
+      osc.start(t);osc.stop(t+0.25);
+      battleMusicNodes.push(osc,g,flt);
+      melStep++;
+      setTimeout(melody,melStep%2===0?210:190);
+    }
+
+    // Punchy kick drum
+    var kickStep=0;
+    function kick(){
+      if(!battleMusicPlaying)return;
+      var t=AC.currentTime;
+      var osc=AC.createOscillator(),g=AC.createGain();
+      osc.type='sine';
+      osc.frequency.setValueAtTime(180,t);
+      osc.frequency.exponentialRampToValueAtTime(40,t+0.07);
+      osc.connect(g);g.connect(master);
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.9,t+0.005);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+      osc.start(t);osc.stop(t+0.14);
+      battleMusicNodes.push(osc,g);
+      kickStep++;
+      // Pattern: kick on beats 1 and 3 of a 4/4 bar
+      var pat=[true,false,true,false];
+      var next=pat[kickStep%4]?300:300;
+      setTimeout(kick,next);
+    }
+
+    // Snare on beats 2+4
+    var snareStep=0;
+    function snare(){
+      if(!battleMusicPlaying)return;
+      var t=AC.currentTime;
+      var buf=AC.createBuffer(1,Math.floor(AC.sampleRate*0.08),AC.sampleRate);
+      var d=buf.getChannelData(0);
+      for(var i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.5);
+      var src=AC.createBufferSource(),g=AC.createGain();
+      src.buffer=buf;
+      src.connect(g);g.connect(master);
+      g.gain.setValueAtTime(snareStep%4===1||snareStep%4===3?0.5:0.1,t);
+      src.start(t);
+      battleMusicNodes.push(src,g);
+      snareStep++;
+      setTimeout(snare,150);
+    }
+
+    setTimeout(bassLine,0);
+    setTimeout(melody,50);
+    setTimeout(kick,0);
+    setTimeout(snare,75);
+  }catch(e){}
+}
+
+function stopBattleMusic(){
+  battleMusicPlaying=false;
+  battleMusicNodes.forEach(function(n){try{if(n.stop)n.stop();if(n.disconnect)n.disconnect();}catch(e){}});
+  battleMusicNodes=[];
+}
+
 function confirmExitQuest(){
   if(confirm('Exit Sprout\u2019s Quest and return to the app?')){
     if(window.parent&&window.parent!==window){
@@ -1487,6 +1608,7 @@ window.addEventListener('load',function(){
     lastAnimT=performance.now();
     requestAnimationFrame(gameLoop);
     setTimeout(function(){showFloorBanner();},700);
+    startBattleMusic();
   },2800);
 });
 
