@@ -666,6 +666,7 @@ html,body{height:100%;overflow:hidden;font-family:'Nunito',sans-serif;background
    <div class="chip" onclick="setLangCat('describe',this)">💬 Describe</div>
   </div>
   <div style="width:100%;max-width:340px;height:180px;border-radius:var(--ra);overflow:hidden;border:3px solid var(--bd);background:#FFFBF5;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+   <div id="lang-scene-wrap"></div>
    <img id="lang-scene" src="" style="width:160px;height:160px;object-fit:contain">
   </div>
   <div style="font-size:12px;font-weight:700;color:var(--mu);text-align:center" id="lang-scene-desc"></div>
@@ -853,7 +854,7 @@ html,body{height:100%;overflow:hidden;font-family:'Nunito',sans-serif;background
 // ============================================================
 const TW='https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/';
 const EM={
-  elephant:'1f418',rainbow:'1f308',butterfly:'1fab6',umbrella:'2602-fe0f',
+  elephant:'1f418',rainbow:'1f308',butterfly:'1fab6',umbrella:'2614',
   strawberry:'1f353',pineapple:'1f34d',helicopter:'1f681',crocodile:'1f40a',
   apple:'1f34e',dog:'1f436',cat:'1f431',sun:'2600-fe0f',moon:'1f319',
   star:'2b50',balloon:'1f388',frog:'1f438',fish:'1f41f',bird:'1f426',
@@ -863,7 +864,7 @@ const EM={
   swimming:'1f3ca',reading:'1f4da',sleeping:'1f634',running:'1f3c3',
   girl:'1f467',boy:'1f466',woman:'1f469',man:'1f468',family:'1f46a',
   woman_cooking:'1f469-200d-1f373',woman_running:'1f3c3-200d-2640-fe0f',
-  children_swimming:'1f3ca-200d-2640-fe0f',girl_reading:'1f4d6',
+  children_swimming:'1f3ca',girl_reading:'1f4d6',
   boy_running:'1f3c3',person_eating:'1f35c',person_sleeping:'1f634',
   baby:'1f476',toothbrush:'1faa5',soap:'1f9fc',shirt:'1f455',shoe:'1f45e',
   hat:'1f3a9',banana:'1f34c',grape:'1f347',orange_fruit:'1f34a',pizza:'1f355',
@@ -874,12 +875,12 @@ const EM={
   dragon:'1f409',gem:'1f48e',wizard:'1f9d9',sword:'2694-fe0f',
   lion:'1f981',koala:'1f428',penguin:'1f427',bear:'1f43b',monkey:'1f412',
   horse:'1f434',cow:'1f404',pig:'1f416',sheep:'1f411',duck:'1f986',
-  hot:'1f525',cold:'2744-fe0f',big:'1f4a3',small:'1f426',
+  hot:'1f525',cold:'2744-fe0f',big:'1f418',small:'1f427',
   happy:'1f604',sad:'1f622',angry:'1f621',scared:'1f628',surprised:'1f62e',
   excited:'1f929',worried:'1f61f',calm:'1f60c',tired:'1f971',proud:'1f60e',
   fast:'1f4a8',slow:'1f422',
   up:'2b06-fe0f',down:'2b07-fe0f',open:'1f513',closed:'1f512',
-  clean:'1f9fc',dirty:'1f9f9',day:'2600-fe0f',night:'1f319',
+  clean:'1f9fc',dirty:'1f9f9',day:'1f305',night:'1f319',
   morning:'1f305',wash:'1f9fc',dress:'1f455',breakfast:'1f373',
   schoolbag:'1f392',brush:'1faa5',bed:'1f6cf-fe0f',pajamas:'1f634',
   bath:'1f6c1',toilet:'1f6bd',shoes_on:'1f45e',
@@ -889,8 +890,20 @@ const EM={
   red_circle:'1f534',blue_circle:'1f535',yellow_circle:'1f7e1',
   green_circle:'1f7e2',purple_circle:'1f7e3',orange_circle:'1f7e0',
   triangle:'1f53a',square:'1f7e5',diamond:'1f4a0',
+  cat_sleeping:'1f431',fish_ocean:'1f41f',bird_tree:'1f426',
+  plane_sky:'2708-fe0f',swimming_kids:'1f3ca',girl_book:'1f467',
+  boy_run:'1f466',food_table:'1f37d-fe0f',child_read:'1f4d6',
+  woman_cook:'1f469-200d-1f373',
 };
-function tw(name,size=56){const c=EM[name]||'2753';return`<img src="${TW}${c}.svg" style="width:${size}px;height:${size}px;object-fit:contain" alt="${name}">`}
+function tw(name,size=56){
+  const c=EM[name]||'2753';
+  // Convert hex code to actual Unicode emoji for fallback
+  function hexToEmoji(hex){
+    try{return hex.split('-').map(h=>String.fromCodePoint(parseInt(h,16))).join('');}catch(e){return '?';}
+  }
+  const fallback=hexToEmoji(c);
+  return`<img src="${TW}${c}.svg" style="width:${size}px;height:${size}px;object-fit:contain" alt="${fallback}" onerror="this.outerHTML='<span style=\"font-size:${size*.8}px;line-height:1;display:inline-block;width:${size}px;text-align:center\">${fallback}</span>'">`;
+}
 function twUrl(name){const c=EM[name]||'2753';return`${TW}${c}.svg`}
 
 // ============================================================
@@ -1419,27 +1432,29 @@ function checkSameDiff(el,answer,correct){
 // ============================================================
 const LANG_SCENES={
   pronoun:[
-    {e:'woman_cooking',desc:'A woman is cooking dinner',q:'What is SHE doing?',opts:['She is cooking','He is eating','They are running','It is sleeping'],ans:0,spoken:['cooking','she is cooking'],fb:'✅ She is cooking! "She" means a girl or woman 👩‍🍳'},
-    {e:'boy_running',desc:'A boy is running outside',q:'What is HE doing?',opts:['She is dancing','He is running','They are swimming','He is sleeping'],ans:1,spoken:['running','he is running'],fb:'✅ He is running! "He" means a boy or man 🏃'},
-    {e:'children_swimming',desc:'Two children are swimming',q:'What are THEY doing?',opts:['She is running','He is eating','They are swimming','It is sleeping'],ans:2,spoken:['swimming','they are swimming'],fb:'✅ They are swimming! "They" means more than one 🏊'},
-    {e:'cat2',desc:'A cat is sleeping on a mat',q:'What is IT doing?',opts:['It is running','She is eating','It is sleeping','They are jumping'],ans:2,spoken:['sleeping','it is sleeping'],fb:'✅ It is sleeping! "It" for animals and objects 🐱'},
-    {e:'girl_reading',desc:'A girl is reading a book',q:'Who is reading?',opts:['He is reading','She is reading','They are reading','It is reading'],ans:1,spoken:['she','she is reading'],fb:'✅ She is reading! 📚'}
+    {e:'woman_cooking', scene:'👩‍🍳🍳', desc:'A woman is cooking dinner',     q:'What is SHE doing?',       opts:['She is cooking','He is eating','They are running','It is sleeping'],ans:0,spoken:['cooking','she is cooking'],fb:'✅ She is cooking! "She" means a girl or woman'},
+    {e:'boy_running',   scene:'🏃‍♂️💨',  desc:'A boy is running outside',      q:'What is HE doing?',        opts:['She is dancing','He is running','They are swimming','He is sleeping'],ans:1,spoken:['running','he is running'],fb:'✅ He is running! "He" means a boy or man'},
+    {e:'swimming',      scene:'🏊‍♀️🏊‍♂️', desc:'Two children are swimming',     q:'What are THEY doing?',     opts:['She is running','He is eating','They are swimming','It is sleeping'],ans:2,spoken:['swimming','they are swimming'],fb:'✅ They are swimming! "They" means more than one'},
+    {e:'cat2',          scene:'🐱💤',   desc:'A cat is sleeping on a mat',    q:'What is IT doing?',        opts:['It is running','She is eating','It is sleeping','They are jumping'],ans:2,spoken:['sleeping','it is sleeping'],fb:'✅ It is sleeping! "It" for animals and objects'},
+    {e:'girl_reading',  scene:'👧📖',   desc:'A girl is reading a book',      q:'Who is reading?',          opts:['He is reading','She is reading','They are reading','It is reading'],ans:1,spoken:['she','she is reading'],fb:'✅ She is reading!'}
   ],
   action:[
-    {e:'children_swimming',desc:'Someone is in a pool',q:'What action is happening?',opts:['Running','Swimming','Jumping','Eating'],ans:1,spoken:['swimming'],fb:'✅ Swimming! 🏊'},
-    {e:'person_eating',desc:'People are eating dinner',q:'What are they doing?',opts:['Sleeping','Playing','Eating','Reading'],ans:2,spoken:['eating'],fb:'✅ Eating! 🍜'},
-    {e:'girl_reading',desc:'A child is reading',q:'What is the child doing?',opts:['Drawing','Reading','Running','Cooking'],ans:1,spoken:['reading'],fb:'✅ Reading! 📚'},
-    {e:'woman_cooking',desc:'Someone is cooking',q:'What are they doing?',opts:['Swimming','Eating','Cooking','Sleeping'],ans:2,spoken:['cooking'],fb:'✅ Cooking! 🍳'}
+    {e:'swimming',      scene:'🏊🌊',   desc:'Someone is in a pool',          q:'What action is happening?',opts:['Running','Swimming','Jumping','Eating'],ans:1,spoken:['swimming'],fb:'✅ Swimming!'},
+    {e:'person_eating', scene:'👨‍👩‍👦🍽️', desc:'People are eating dinner',      q:'What are they doing?',     opts:['Sleeping','Playing','Eating','Reading'],ans:2,spoken:['eating'],fb:'✅ Eating!'},
+    {e:'reading',       scene:'🧒📚',   desc:'A child is reading',            q:'What is the child doing?', opts:['Drawing','Reading','Running','Cooking'],ans:1,spoken:['reading'],fb:'✅ Reading!'},
+    {e:'cooking',       scene:'👩‍🍳🥘',  desc:'Someone is cooking',            q:'What are they doing?',     opts:['Swimming','Eating','Cooking','Sleeping'],ans:2,spoken:['cooking'],fb:'✅ Cooking!'},
+    {e:'boy_running',   scene:'🏃‍♂️🌳',  desc:'A boy is running outside',      q:'What is the boy doing?',   opts:['Eating','Sleeping','Running','Swimming'],ans:2,spoken:['running'],fb:'✅ Running!'}
   ],
   location:[
-    {e:'fish',desc:'A fish in the ocean',q:'Where is the fish?',opts:['In the tree','Under the ground','In the water','On the moon'],ans:2,spoken:['water','in the water'],fb:'✅ In the water! 🌊'},
-    {e:'plane',desc:'A plane in the sky',q:'Where is the plane?',opts:['Under the sea','In the sky','On the ground','In a box'],ans:1,spoken:['sky','in the sky'],fb:'✅ In the sky! ✈️'},
-    {e:'bird',desc:'A bird in a tree',q:'Where is the bird?',opts:['Under the tree','In the tree','In the water','On the ground'],ans:1,spoken:['tree','in the tree'],fb:'✅ In the tree! 🐦'}
+    {e:'fish',          scene:'🐟🌊',   desc:'A fish in the ocean',           q:'Where is the fish?',       opts:['In the tree','Under the ground','In the water','On the moon'],ans:2,spoken:['water','in the water'],fb:'✅ In the water!'},
+    {e:'plane',         scene:'✈️🌤️',   desc:'A plane in the sky',            q:'Where is the plane?',      opts:['Under the sea','In the sky','On the ground','In a box'],ans:1,spoken:['sky','in the sky'],fb:'✅ In the sky!'},
+    {e:'bird',          scene:'🐦🌳',   desc:'A bird in a tree',              q:'Where is the bird?',       opts:['Under the tree','In the tree','In the water','On the ground'],ans:1,spoken:['tree','in the tree'],fb:'✅ In the tree!'},
+    {e:'dog',           scene:'🐕🏠',   desc:'A dog inside the house',        q:'Where is the dog?',        opts:['In the park','Under the bed','Inside the house','On the roof'],ans:2,spoken:['inside','in the house'],fb:'✅ Inside the house!'}
   ],
   describe:[
-    {e:'elephant',desc:'A big grey elephant',q:'How would you describe this animal?',opts:['Small and yellow','Big and grey','Tiny and red','Short and blue'],ans:1,spoken:['big grey','large','grey'],fb:'✅ Big and grey! 🐘'},
-    {e:'rainbow',desc:'A bright colourful rainbow',q:'How would you describe the rainbow?',opts:['Dark and scary','Colourful and bright','Small and grey','Loud and fast'],ans:1,spoken:['colourful','bright','colourful and bright'],fb:'✅ Colourful and bright! 🌈'},
-    {e:'strawberry',desc:'A red juicy strawberry',q:'What colour is the strawberry?',opts:['Blue','Yellow','Red','Green'],ans:2,spoken:['red'],fb:'✅ Red! 🍓'}
+    {e:'elephant',      scene:'🐘',     desc:'A big grey elephant',           q:'How would you describe this?',opts:['Small and yellow','Big and grey','Tiny and red','Short and blue'],ans:1,spoken:['big grey','large','grey'],fb:'✅ Big and grey!'},
+    {e:'rainbow',       scene:'🌈',     desc:'A bright colourful rainbow',    q:'How would you describe the rainbow?',opts:['Dark and scary','Colourful and bright','Small and grey','Loud and fast'],ans:1,spoken:['colourful','bright','colourful and bright'],fb:'✅ Colourful and bright!'},
+    {e:'strawberry',    scene:'🍓',     desc:'A red juicy strawberry',        q:'What colour is the strawberry?',opts:['Blue','Yellow','Red','Green'],ans:2,spoken:['red'],fb:'✅ Red!'}
   ]
 };
 let langCat='pronoun',langMode='choice',langIdx=0,langAnswered=false,langRec=null,langListening=false;
@@ -1448,7 +1463,15 @@ function setLangMode(m,el){langMode=m;document.querySelectorAll('#s-lang .chip[i
 function setLangCat(cat,el){langCat=cat;langIdx=0;document.querySelectorAll('#s-lang .chip:not([id^="lm"])').forEach(c=>c.classList.remove('on'));el.classList.add('on');renderLangQ()}
 function renderLangQ(){
   const arr=LANG_SCENES[langCat];const q=arr[langIdx%arr.length];langAnswered=false;
-  document.getElementById('lang-scene').src=twUrl(q.e);
+  const _sceneEl=document.getElementById('lang-scene');
+  const _sceneWrap=document.getElementById('lang-scene-wrap');
+  if(q.scene){
+    if(_sceneEl)_sceneEl.style.display='none';
+    if(_sceneWrap)_sceneWrap.innerHTML='<div style="font-size:72px;line-height:1.2;text-align:center;letter-spacing:4px;padding:8px">'+q.scene+'</div>';
+  } else {
+    if(_sceneEl){_sceneEl.style.display='';_sceneEl.src=twUrl(q.e);}
+    if(_sceneWrap)_sceneWrap.innerHTML='';
+  }
   document.getElementById('lang-scene-desc').textContent=q.desc;
   document.getElementById('lang-q').textContent=q.q;
   document.getElementById('lang-fb').className='feedback';document.getElementById('lang-fb').textContent='';
@@ -1731,6 +1754,7 @@ function renderPathTrace(c){
   const clear=document.createElement('button');clear.className='btn btn-ghost';clear.textContent='🔄 Try again';clear.onclick=()=>{drawPath();strokes=0;completed=false;updatePathProgress(0)};
   const done=document.createElement('button');done.className='btn btn-gr';done.textContent='✓ Done!';done.onclick=()=>{celebrate('✂️','Great tracing!','You stayed on the path!',25);pathIdx++};
   btns.appendChild(clear);btns.appendChild(done);c.appendChild(btns);
+  const _onb=document.createElement('button');_onb.className='btn btn-ghost';_onb.style.marginTop='10px';_onb.textContent='Next \u2192';_onb.onclick=function(){renderOT();playSound('click');};c.appendChild(_onb);
 }
 function drawPath(){
   if(!pathCtx)return;pathCtx.clearRect(0,0,300,220);pathCtx.fillStyle='#FFFBF5';pathCtx.fillRect(0,0,300,220);
@@ -1786,6 +1810,7 @@ function renderShapeMatch(c){
   });
   c.appendChild(grid);
   const btn=document.createElement('button');btn.className='btn btn-or';btn.textContent='🎲 New shape';btn.onclick=()=>renderShapeMatch(c);c.appendChild(btn);
+  const _onb=document.createElement('button');_onb.className='btn btn-ghost';_onb.style.marginTop='10px';_onb.textContent='Next \u2192';_onb.onclick=function(){renderOT();playSound('click');};c.appendChild(_onb);
 }
 
 // SIMON SAYS
@@ -1818,6 +1843,7 @@ function renderSimonSays(c){
   });
   c.appendChild(grid);
   const fb=document.createElement('div');fb.className='feedback';c.appendChild(fb);
+  const _onb=document.createElement('button');_onb.className='btn btn-ghost';_onb.style.marginTop='10px';_onb.textContent='Next \u2192';_onb.onclick=function(){renderOT();playSound('click');};c.appendChild(_onb);
 }
 
 // SELF CARE SEQUENCING
@@ -1859,6 +1885,7 @@ function renderSelfCare(c){
   });
   c.appendChild(slotsWrap);
   const btn=document.createElement('button');btn.className='btn btn-ghost';btn.textContent='🔄 Try again';btn.onclick=()=>renderSelfCare(c);c.appendChild(btn);
+  const _onb=document.createElement('button');_onb.className='btn btn-ghost';_onb.style.marginTop='10px';_onb.textContent='Next \u2192';_onb.onclick=function(){renderOT();playSound('click');};c.appendChild(_onb);
 }
 
 // ============================================================
