@@ -215,7 +215,7 @@ body{background:#0a0610;overflow:hidden;font-family:'Nunito',sans-serif;width:10
   <div class="hud-bar">
     <div id="av-btn" onclick="openAv()">🐨</div>
     <div id="hero-name">HERO</div>
-    <div onclick="confirmExitQuest()" style="pointer-events:all;padding:4px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:8px;font-size:10px;font-weight:800;color:rgba(255,255,255,.6);cursor:pointer;white-space:nowrap;font-family:Nunito,sans-serif;flex-shrink:0">🏠 Exit</div>
+    <div onclick="toggleQuestMute()" id="q-mute-btn" style="pointer-events:all;padding:4px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:8px;font-size:10px;font-weight:800;color:rgba(255,255,255,.6);cursor:pointer;white-space:nowrap;font-family:Nunito,sans-serif;flex-shrink:0">🔊</div><div onclick="confirmExitQuest()" style="pointer-events:all;padding:4px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:8px;font-size:10px;font-weight:800;color:rgba(255,255,255,.6);cursor:pointer;white-space:nowrap;font-family:Nunito,sans-serif;flex-shrink:0">🏠 Exit</div>
     <div class="bars">
       <div class="bar-r"><span class="bar-ic">❤️</span><div class="bar-bg"><div class="bar-fi" id="hp-bar"></div></div></div>
       <div class="bar-r"><span class="bar-ic">⚡</span><div class="bar-bg"><div class="bar-fi" id="xp-bar"></div></div></div>
@@ -1468,110 +1468,154 @@ function bShape(body){
 var battleMusicPlaying=false;
 var battleMusicNodes=[];
 var battleMusicCtx=null;
+var questMuted=false;
 
 function startBattleMusic(){
   if(battleMusicPlaying)return;
   try{
     if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();
+    if(!AC)return;
     battleMusicCtx=AC;
     battleMusicPlaying=true;
+    if(questMuted)return; // respect mute
 
-    var master=AC.createGain();master.gain.value=0.06;
+    var master=AC.createGain();
+    master.gain.value=0.045;
     master.connect(AC.destination);
     battleMusicNodes.push(master);
 
-    // Retro chiptune: fast arpeggios, square waves, NES-style
-    // A minor pentatonic: A C D E G (bass) + octave up
-    var bass=[110,130.8,146.8,164.8,196,220];
-    var mel =[440,523,587,659,784,880,1047,784,659,587,523,440];
-    // Driving 16th-note bass arpeggio
-    var bStep=0;
-    var bassPat=[0,2,4,2,1,2,4,2,0,2,3,2,1,3,4,3];
-    function bassArp(){
+    // Deep reverb for cave/dungeon space
+    var rev=AC.createConvolver();
+    var irLen=Math.floor(AC.sampleRate*3.5);
+    var ir=AC.createBuffer(2,irLen,AC.sampleRate);
+    for(var ch=0;ch<2;ch++){
+      var d=ir.getChannelData(ch);
+      for(var i=0;i<irLen;i++)
+        d[i]=(Math.random()*2-1)*Math.pow(1-i/irLen,1.4)*0.7;
+    }
+    rev.buffer=ir;
+    var revGain=AC.createGain();revGain.gain.value=0.55;
+    master.connect(rev);rev.connect(revGain);revGain.connect(AC.destination);
+    battleMusicNodes.push(rev,revGain);
+
+    // Low-pass for warmth and darkness
+    var lp=AC.createBiquadFilter();
+    lp.type='lowpass';lp.frequency.value=900;lp.Q.value=0.7;
+    master.connect(lp);lp.connect(AC.destination);
+    battleMusicNodes.push(lp);
+
+    // ── EERIE DRONE ───────────────────────────────────────
+    // Deep bass drone — slow beating between two close frequencies
+    function addDrone(freq,vol,dur){
       if(!battleMusicPlaying)return;
       var t=AC.currentTime;
-      var freq=bass[bassPat[bStep%bassPat.length]%bass.length];
       var o=AC.createOscillator(),g=AC.createGain();
-      o.type='square';o.frequency.value=freq;
+      o.type='sine';o.frequency.value=freq;
       o.connect(g);g.connect(master);
       g.gain.setValueAtTime(0,t);
-      g.gain.linearRampToValueAtTime(0.35,t+0.005);
-      g.gain.setValueAtTime(0.35,t+0.06);
-      g.gain.linearRampToValueAtTime(0,t+0.075);
-      o.start(t);o.stop(t+0.08);
+      g.gain.linearRampToValueAtTime(vol,t+2.0);
+      g.gain.setValueAtTime(vol,t+dur-2.0);
+      g.gain.linearRampToValueAtTime(0,t+dur);
+      o.start(t);o.stop(t+dur+0.1);
       battleMusicNodes.push(o,g);
-      bStep++;
-      setTimeout(bassArp,80); // 16th notes ~150bpm
     }
+    // Root + slight detuned for beating effect — eerie
+    addDrone(55.0, 0.4, 9999);   // A1
+    addDrone(55.3, 0.25, 9999);  // slightly detuned = slow pulse
+    addDrone(82.4, 0.18, 9999);  // E2 fifth
+    addDrone(110,  0.12, 9999);  // A2 octave
 
-    // Bright melody - NES square lead
-    var mStep=0;
-    var melPat=[0,0,3,5,7,5,3,0, 1,1,3,6,8,6,3,1, 2,4,6,8,9,8,6,4, 0,2,4,6,4,2,0,2];
-    function melLead(){
+    // ── EERIE MELODY — slow, minor, sparse ───────────────
+    // A natural minor pentatonic: A C D E G
+    var eerieNotes=[110,130.8,146.8,164.8,196,220,261.6,293.7,329.6,392];
+    var melPat=[0,2,4,2,1,0,3,2,4,1,0,2,3,1,4,0];
+    var melStep=0;
+    function eerieNote(){
       if(!battleMusicPlaying)return;
       var t=AC.currentTime;
-      var freq=mel[melPat[mStep%melPat.length]%mel.length];
-      // Only play on beat subdivisions - 8th notes
-      if(mStep%2===0){
+      var freq=eerieNotes[melPat[melStep%melPat.length]];
+
+      var o=AC.createOscillator(),g=AC.createGain();
+      o.type='triangle';
+      o.frequency.value=freq*(Math.random()>0.85?2:1);
+      o.connect(g);g.connect(master);
+      var vel=0.12+Math.random()*0.1;
+      var dur=1.2+Math.random()*1.4;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(vel,t+0.15);
+      g.gain.setValueAtTime(vel*0.6,t+dur*0.4);
+      g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+      o.start(t);o.stop(t+dur+0.1);
+      battleMusicNodes.push(o,g);
+
+      melStep++;
+      // Slow irregular timing — breathes like a dungeon
+      var wait=1800+Math.random()*2200;
+      setTimeout(eerieNote,wait);
+    }
+    setTimeout(eerieNote,1500);
+
+    // ── DISTANT WATER DROPS — cave atmosphere ─────────────
+    function waterDrop(){
+      if(!battleMusicPlaying)return;
+      var t=AC.currentTime;
+      var pitch=600+Math.random()*400;
+      var o=AC.createOscillator(),g=AC.createGain();
+      o.type='sine';o.frequency.setValueAtTime(pitch,t);
+      o.frequency.exponentialRampToValueAtTime(pitch*0.7,t+0.08);
+      o.connect(g);g.connect(master);
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.06,t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.25);
+      o.start(t);o.stop(t+0.3);
+      battleMusicNodes.push(o,g);
+      setTimeout(waterDrop,3000+Math.random()*5000);
+    }
+    setTimeout(waterDrop,2000);
+
+    // ── TENSION SWELL every ~20s — brief intensity spike ──
+    function tensionSwell(){
+      if(!battleMusicPlaying)return;
+      var t=AC.currentTime;
+      [82.4,110,138.6,164.8].forEach(function(f,i){
         var o=AC.createOscillator(),g=AC.createGain();
-        o.type='square';o.frequency.value=freq;
-        var flt=AC.createBiquadFilter();flt.type='highpass';flt.frequency.value=200;
+        o.type='sawtooth';
+        var flt=AC.createBiquadFilter();flt.type='lowpass';flt.frequency.value=300;
         o.connect(flt);flt.connect(g);g.connect(master);
-        var vel=mStep%8===0?0.3:0.18;
-        g.gain.setValueAtTime(0,t);
-        g.gain.linearRampToValueAtTime(vel,t+0.008);
-        g.gain.setValueAtTime(vel*0.7,t+0.1);
-        g.gain.linearRampToValueAtTime(0,t+0.16);
-        o.start(t);o.stop(t+0.18);
+        o.frequency.value=f;
+        var start=t+i*0.18;
+        g.gain.setValueAtTime(0,start);
+        g.gain.linearRampToValueAtTime(0.12,start+0.8);
+        g.gain.exponentialRampToValueAtTime(0.001,start+2.5);
+        o.start(start);o.stop(start+2.7);
         battleMusicNodes.push(o,g,flt);
-      }
-      mStep++;
-      setTimeout(melLead,80);
+      });
+      setTimeout(tensionSwell,16000+Math.random()*8000);
     }
+    setTimeout(tensionSwell,8000);
 
-    // NES-style drum: kick + snare noise
-    var dStep=0;
-    var drumPat=['K','.','.','S','K','.','.','S','K','.','K','.','.','.','S','.'];
-    function drum(){
-      if(!battleMusicPlaying)return;
-      var t=AC.currentTime;
-      var hit=drumPat[dStep%drumPat.length];
-      if(hit==='K'){
-        // Kick: sine pitch drop
-        var o=AC.createOscillator(),g=AC.createGain();
-        o.type='sine';
-        o.frequency.setValueAtTime(200,t);
-        o.frequency.exponentialRampToValueAtTime(40,t+0.06);
-        o.connect(g);g.connect(master);
-        g.gain.setValueAtTime(0,t);
-        g.gain.linearRampToValueAtTime(0.8,t+0.003);
-        g.gain.exponentialRampToValueAtTime(0.001,t+0.1);
-        o.start(t);o.stop(t+0.12);
-        battleMusicNodes.push(o,g);
-      } else if(hit==='S'){
-        // Snare: white noise burst
-        var buf=AC.createBuffer(1,Math.floor(AC.sampleRate*0.06),AC.sampleRate);
-        var d=buf.getChannelData(0);
-        for(var i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.2);
-        var src=AC.createBufferSource(),g2=AC.createGain();
-        src.buffer=buf;src.connect(g2);g2.connect(master);
-        g2.gain.setValueAtTime(0.45,t);
-        src.start(t);
-        battleMusicNodes.push(src,g2);
-      }
-      dStep++;
-      setTimeout(drum,160); // 8th notes
-    }
-
-    setTimeout(bassArp,0);
-    setTimeout(melLead,40);
-    setTimeout(drum,0);
   }catch(e){}
 }
 function stopBattleMusic(){
   battleMusicPlaying=false;
-  battleMusicNodes.forEach(function(n){try{if(n.stop)n.stop();if(n.disconnect)n.disconnect();}catch(e){}});
+  battleMusicNodes.forEach(function(n){try{if(n.stop)n.stop();}catch(e){}try{if(n.disconnect)n.disconnect();}catch(e){}});
   battleMusicNodes=[];
+}
+
+function toggleQuestMute(){
+  questMuted=!questMuted;
+  var btn=document.getElementById('q-mute-btn');
+  if(btn)btn.textContent=questMuted?'🔇':'🔊';
+  if(questMuted){
+    // Silence all nodes but keep them running
+    battleMusicNodes.forEach(function(n){
+      try{if(n.gain&&n.gain.value!==undefined)n.gain.setValueAtTime(0,AC.currentTime);}catch(e){}
+    });
+  } else {
+    // Restart music
+    stopBattleMusic();
+    startBattleMusic();
+  }
 }
 
 function confirmExitQuest(){
