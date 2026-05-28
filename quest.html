@@ -31,12 +31,11 @@ body{background:#0a0610;overflow:hidden;font-family:'Nunito',sans-serif;width:10
 #floor-lbl{position:fixed;top:76px;left:10px;font-family:'Press Start 2P',monospace;font-size:6px;color:rgba(255,200,0,.55);z-index:50;line-height:1.8;pointer-events:none}
 
 /* DPAD */
-#ctrl{position:fixed;bottom:18px;left:18px;z-index:50;pointer-events:none}
-.dpad{width:120px;height:120px;position:relative;pointer-events:all}
-.dp{position:absolute;width:38px;height:38px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.18);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;transition:background .08s;touch-action:none;user-select:none}
-.dp:active,.dp.active{background:rgba(255,255,255,.28)}
-.dp-u{top:0;left:41px}.dp-d{bottom:0;left:41px}.dp-l{top:41px;left:0}.dp-r{top:41px;right:0}
-.dp-c{top:41px;left:41px;background:rgba(255,200,0,.1);border-color:rgba(255,200,0,.3);font-size:12px}
+#ctrl{position:fixed;bottom:22px;left:22px;z-index:50;pointer-events:none}
+#thumbstick-base{width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.15);position:relative;pointer-events:all;touch-action:none;user-select:none;display:flex;align-items:center;justify-content:center}
+#thumbstick-knob{width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.22);border:2px solid rgba(255,255,255,.4);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);transition:none;pointer-events:none;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+/* legacy dpad hidden */
+.dp{display:none}
 
 /* ACTION BUTTONS */
 #abtn{position:fixed;bottom:18px;right:18px;z-index:50;display:flex;flex-direction:column;gap:9px;pointer-events:all}
@@ -231,12 +230,8 @@ body{background:#0a0610;overflow:hidden;font-family:'Nunito',sans-serif;width:10
 <div id="fbanner"><div class="fb-sub">ENTERING</div><div class="fb-name" id="fb-name">THE STONE KEEP</div><div class="fb-diff" id="fb-diff">⭐ Beginner</div></div>
 
 <div id="ctrl">
-  <div class="dpad">
-    <div class="dp dp-u" id="dp-u">▲</div>
-    <div class="dp dp-l" id="dp-l">◀</div>
-    <div class="dp dp-c" id="dp-c">⚔️</div>
-    <div class="dp dp-r" id="dp-r">▶</div>
-    <div class="dp dp-d" id="dp-d">▼</div>
+  <div id="thumbstick-base">
+    <div id="thumbstick-knob"></div>
   </div>
 </div>
 <div id="abtn">
@@ -353,6 +348,13 @@ const EM={
   happy:'1F604',sad:'1F622',plane:'2708',mountain:'26F0',
   car:'1F697',ball:'26BD',tree:'1F333',house:'1F3E0',
   circle:'2B55',square:'1F7E5',triangle:'1F53A',diamond:'1F4A0',
+  hat:'1F3A9',ball2:'1F3C0',spoon:'1F944',cup:'2615',
+  boat:'26F5',sock:'1F9E6',chair:'1FA91',table:'1F3D3',
+  ant:'1F41C',bee:'1F41D',bug:'1F41B',worm:'1FAB1',
+  mango:'1F96D',cherry:'1F352',grape:'1F347',lemon:'1F34B',
+  train:'1F686',bike:'1F6B2',rocket2:'1F680',ship:'1F6A2',
+  cow:'1F42E',pig:'1F416',horse:'1F434',sheep:'1F411',
+  eye:'1F441',mouth:'1F444',foot:'1F9B6',arm:'1F4AA',
 };
 function twUrl(n){return TW+(EM[n]||'2753')+'.svg'}
 function twImg(n,s){s=s||48;return '<img src="'+twUrl(n)+'" width="'+s+'" height="'+s+'" style="object-fit:contain" alt="'+n+'" onerror="this.style.cssText=\'width:'+s+'px;height:'+s+'px;background:#2a2050;border-radius:6px;display:inline-block\'">';}
@@ -638,12 +640,20 @@ function drawEntity(ent,t){
   ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();
   var sr=ent.type==='boss'?sz*0.45:sz*0.28;
   ctx.ellipse(p.x+shk,p.y+sz*0.4,sr,sr*0.38,0,0,Math.PI*2);ctx.fill();
-  if(ent.type==='boss'){ctx.shadowColor=ent.col;ctx.shadowBlur=12;}
-  else if(ent.type==='obstacle'){ctx.shadowColor=ent.col;ctx.shadowBlur=6;}
-  var em=eEmo(ent);
-  var esz=ent.type==='boss'?sz*1.1:ent.type==='obstacle'?sz*0.8:sz*0.75;
-  ctx.font=Math.round(esz)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(em,p.x+shk,p.y+bob);ctx.shadowBlur=0;
+  if(ent.type==='boss'){
+    ctx.shadowColor=ent.col;ctx.shadowBlur=16;
+    drawMonster(ctx,p.x+shk,p.y+bob,sz,ent,t);
+    ctx.shadowBlur=0;
+  } else if(ent.type==='obstacle'){
+    ctx.shadowColor=ent.col;ctx.shadowBlur=6;
+    var esz2=sz*0.82;ctx.font=Math.round(esz2)+'px sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(eEmo(ent),p.x+shk,p.y+bob);ctx.shadowBlur=0;
+  } else {
+    var esz3=sz*0.78;ctx.font=Math.round(esz3)+'px sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(eEmo(ent),p.x+shk,p.y+bob);ctx.shadowBlur=0;
+  }
   if(ent.type==='boss'&&ent.hp>0){
     var bw=sz*1.4,bh=5,bx=p.x-bw/2,by=p.y-sz*0.7;
     ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(bx,by,bw,bh);
@@ -666,6 +676,145 @@ function drawPlayer(wx,wy,t){
   ctx.fillText(G.avatar.body||'🐨',p.x,p.y+bob);
   if(G.avatar.weapon){ctx.font=Math.round(sz*0.45)+'px sans-serif';ctx.fillText(G.avatar.weapon,p.x+sz*0.28,p.y+sz*0.15+bob);}
   if(G.avatar.hat){ctx.font=Math.round(sz*0.38)+'px sans-serif';ctx.fillText(G.avatar.hat,p.x,p.y-sz*0.3+bob);}
+}
+
+// Draw pixel-art style monster faces on canvas
+function drawMonster(ctx2,x,y,sz,ent,t){
+  var type=ent.emo; // G=Goblin King, I=Ice Witch, X=Lava Dragon
+  var bob=Math.sin(t*0.003)*2;
+  var s=sz; // base size
+
+  ctx2.save();
+  ctx2.translate(x,y+bob);
+
+  if(type==='C'){ // GOBLIN KING — green, crown, fangs
+    // Body/head
+    ctx2.fillStyle='#3a8a3a';
+    ctx2.beginPath();ctx2.ellipse(0,0,s*0.6,s*0.55,0,0,Math.PI*2);ctx2.fill();
+    // Darker face
+    ctx2.fillStyle='#2d6b2d';
+    ctx2.beginPath();ctx2.ellipse(0,s*0.05,s*0.48,s*0.44,0,0,Math.PI*2);ctx2.fill();
+    // Crown
+    ctx2.fillStyle='#ffd700';
+    var cw=s*0.7,ch=s*0.32,cx2=-cw/2,cy2=-s*0.52;
+    ctx2.fillRect(cx2,cy2,cw,ch);
+    // Crown points
+    [cx2,cx2+cw*0.25,cx2+cw*0.5,cx2+cw*0.75].forEach(function(px2){
+      ctx2.beginPath();ctx2.moveTo(px2,cy2);ctx2.lineTo(px2+cw*0.125,cy2-ch*0.7);ctx2.lineTo(px2+cw*0.25,cy2);ctx2.closePath();ctx2.fill();
+    });
+    // Gems in crown
+    ctx2.fillStyle='#ff4444';ctx2.beginPath();ctx2.arc(0,cy2+ch*0.5,s*0.07,0,Math.PI*2);ctx2.fill();
+    // Eyes — glowing yellow
+    var eyeY=-s*0.08,eyeX=s*0.2;
+    ctx2.fillStyle='#ffee00';
+    ctx2.beginPath();ctx2.ellipse(-eyeX,eyeY,s*0.13,s*0.11,0,0,Math.PI*2);ctx2.fill();
+    ctx2.beginPath();ctx2.ellipse(eyeX,eyeY,s*0.13,s*0.11,0,0,Math.PI*2);ctx2.fill();
+    ctx2.fillStyle='#000';
+    ctx2.beginPath();ctx2.arc(-eyeX,eyeY,s*0.06,0,Math.PI*2);ctx2.fill();
+    ctx2.beginPath();ctx2.arc(eyeX,eyeY,s*0.06,0,Math.PI*2);ctx2.fill();
+    // Nose
+    ctx2.fillStyle='#1d4d1d';
+    ctx2.beginPath();ctx2.arc(0,s*0.08,s*0.07,0,Math.PI*2);ctx2.fill();
+    // Fangs
+    ctx2.fillStyle='#ffffcc';
+    ctx2.beginPath();ctx2.moveTo(-s*0.12,s*0.22);ctx2.lineTo(-s*0.06,s*0.38);ctx2.lineTo(0,s*0.22);ctx2.closePath();ctx2.fill();
+    ctx2.beginPath();ctx2.moveTo(0,s*0.22);ctx2.lineTo(s*0.06,s*0.38);ctx2.lineTo(s*0.12,s*0.22);ctx2.closePath();ctx2.fill();
+    // Ears
+    ctx2.fillStyle='#3a8a3a';
+    ctx2.beginPath();ctx2.ellipse(-s*0.58,0,s*0.12,s*0.22,Math.PI*0.15,0,Math.PI*2);ctx2.fill();
+    ctx2.beginPath();ctx2.ellipse(s*0.58,0,s*0.12,s*0.22,-Math.PI*0.15,0,Math.PI*2);ctx2.fill();
+
+  } else if(type==='I'){ // ICE WITCH — pale blue, angular, magic
+    // Body
+    ctx2.fillStyle='#88ccee';
+    ctx2.beginPath();ctx2.ellipse(0,0,s*0.55,s*0.58,0,0,Math.PI*2);ctx2.fill();
+    // Face gradient (icy)
+    ctx2.fillStyle='#aaddff';
+    ctx2.beginPath();ctx2.ellipse(0,s*0.03,s*0.44,s*0.46,0,0,Math.PI*2);ctx2.fill();
+    // Ice crystals on head
+    ctx2.strokeStyle='#ffffff';ctx2.lineWidth=2;
+    [[-s*0.2,-s*0.55],[0,-s*0.65],[s*0.2,-s*0.55]].forEach(function(pt){
+      ctx2.beginPath();ctx2.moveTo(pt[0],pt[1]);ctx2.lineTo(pt[0],pt[1]-s*0.22);ctx2.stroke();
+      ctx2.beginPath();ctx2.moveTo(pt[0]-s*0.08,pt[1]-s*0.11);ctx2.lineTo(pt[0]+s*0.08,pt[1]-s*0.11);ctx2.stroke();
+    });
+    // Cold glowing eyes
+    ctx2.fillStyle='#00eeff';
+    ctx2.beginPath();ctx2.ellipse(-s*0.18,-s*0.08,s*0.14,s*0.1,0,0,Math.PI*2);ctx2.fill();
+    ctx2.beginPath();ctx2.ellipse(s*0.18,-s*0.08,s*0.14,s*0.1,0,0,Math.PI*2);ctx2.fill();
+    ctx2.fillStyle='#003366';
+    ctx2.beginPath();ctx2.arc(-s*0.18,-s*0.08,s*0.06,0,Math.PI*2);ctx2.fill();
+    ctx2.beginPath();ctx2.arc(s*0.18,-s*0.08,s*0.06,0,Math.PI*2);ctx2.fill();
+    // Pointed nose
+    ctx2.fillStyle='#66aacc';
+    ctx2.beginPath();ctx2.moveTo(0,s*0.05);ctx2.lineTo(-s*0.06,s*0.2);ctx2.lineTo(s*0.06,s*0.2);ctx2.closePath();ctx2.fill();
+    // Sinister smile
+    ctx2.strokeStyle='#003366';ctx2.lineWidth=2.5;
+    ctx2.beginPath();ctx2.arc(0,s*0.28,s*0.18,Math.PI*0.1,Math.PI*0.9);ctx2.stroke();
+    // Frost particles (animated)
+    var ang=t*0.002;
+    for(var fi=0;fi<6;fi++){
+      var fa=ang+fi*Math.PI/3;
+      ctx2.fillStyle='rgba(200,240,255,'+(0.3+Math.sin(t*0.005+fi)*0.2)+')';
+      ctx2.beginPath();ctx2.arc(Math.cos(fa)*s*0.72,Math.sin(fa)*s*0.72,s*0.05,0,Math.PI*2);ctx2.fill();
+    }
+
+  } else if(type==='X'){ // LAVA DRAGON — red/orange, scales, fire breath
+    // Neck/body
+    ctx2.fillStyle='#cc3300';
+    ctx2.beginPath();ctx2.ellipse(0,s*0.1,s*0.58,s*0.62,0,0,Math.PI*2);ctx2.fill();
+    // Belly
+    ctx2.fillStyle='#ff6600';
+    ctx2.beginPath();ctx2.ellipse(0,s*0.22,s*0.36,s*0.36,0,0,Math.PI*2);ctx2.fill();
+    // Head
+    ctx2.fillStyle='#aa2200';
+    ctx2.beginPath();ctx2.ellipse(0,-s*0.08,s*0.5,s*0.45,0,0,Math.PI*2);ctx2.fill();
+    // Snout/jaw
+    ctx2.fillStyle='#882200';
+    ctx2.beginPath();ctx2.ellipse(0,s*0.18,s*0.38,s*0.22,0,0,Math.PI*2);ctx2.fill();
+    // Horns
+    ctx2.fillStyle='#661100';
+    ctx2.beginPath();ctx2.moveTo(-s*0.22,-s*0.42);ctx2.lineTo(-s*0.38,-s*0.75);ctx2.lineTo(-s*0.1,-s*0.42);ctx2.closePath();ctx2.fill();
+    ctx2.beginPath();ctx2.moveTo(s*0.22,-s*0.42);ctx2.lineTo(s*0.38,-s*0.75);ctx2.lineTo(s*0.1,-s*0.42);ctx2.closePath();ctx2.fill();
+    // Fire eyes
+    ctx2.fillStyle='#ffee00';
+    ctx2.beginPath();ctx2.ellipse(-s*0.2,-s*0.12,s*0.13,s*0.1,0,0,Math.PI*2);ctx2.fill();
+    ctx2.beginPath();ctx2.ellipse(s*0.2,-s*0.12,s*0.13,s*0.1,0,0,Math.PI*2);ctx2.fill();
+    ctx2.fillStyle='#ff4400';
+    ctx2.beginPath();ctx2.arc(-s*0.2,-s*0.12,s*0.06,0,Math.PI*2);ctx2.fill();
+    ctx2.beginPath();ctx2.arc(s*0.2,-s*0.12,s*0.06,0,Math.PI*2);ctx2.fill();
+    // Fire breath (animated)
+    var flicker=0.6+Math.sin(t*0.008)*0.4;
+    var grad=ctx2.createRadialGradient(0,s*0.28,0,0,s*0.28,s*0.5*flicker);
+    grad.addColorStop(0,'rgba(255,255,100,.9)');
+    grad.addColorStop(0.4,'rgba(255,100,0,.7)');
+    grad.addColorStop(1,'rgba(255,50,0,0)');
+    ctx2.fillStyle=grad;
+    ctx2.beginPath();ctx2.ellipse(0,s*0.28+s*0.25*flicker,s*0.25*flicker,s*0.45*flicker,0,0,Math.PI*2);ctx2.fill();
+    // Scales pattern
+    ctx2.strokeStyle='rgba(0,0,0,.2)';ctx2.lineWidth=1;
+    for(var row=0;row<3;row++){
+      for(var col2=-1;col2<=1;col2++){
+        ctx2.beginPath();
+        ctx2.arc(col2*s*0.2,s*0.05+row*s*0.18,s*0.1,Math.PI,Math.PI*2);
+        ctx2.stroke();
+      }
+    }
+  } else {
+    // Fallback for minions / unknown — draw a simple face
+    ctx2.fillStyle=ent.col||'#664488';
+    ctx2.beginPath();ctx2.arc(0,0,s*0.45,0,Math.PI*2);ctx2.fill();
+    ctx2.fillStyle='#fff';
+    ctx2.beginPath();ctx2.arc(-s*0.15,-s*0.08,s*0.12,0,Math.PI*2);ctx2.fill();
+    ctx2.beginPath();ctx2.arc(s*0.15,-s*0.08,s*0.12,0,Math.PI*2);ctx2.fill();
+    ctx2.fillStyle='#000';
+    ctx2.beginPath();ctx2.arc(-s*0.15,-s*0.08,s*0.06,0,Math.PI*2);ctx2.fill();
+    ctx2.beginPath();ctx2.arc(s*0.15,-s*0.08,s*0.06,0,Math.PI*2);ctx2.fill();
+    ctx2.fillStyle='#fff';
+    ctx2.strokeStyle='#000';ctx2.lineWidth=1.5;
+    ctx2.beginPath();ctx2.arc(0,s*0.12,s*0.2,0,Math.PI);ctx2.stroke();
+  }
+
+  ctx2.restore();
 }
 
 function drawFloor(t){
@@ -1211,18 +1360,53 @@ function mkOpt(html2,p,s){var d=document.createElement('div');d.className='opt';
 function lockOpts(grid){grid.querySelectorAll('.opt').forEach(function(o){o.style.pointerEvents='none';});}
 
 function bVocab(body){
-  var item=rnd(PD.vocab);curHint='Think about the category.';
-  document.getElementById('pz-ttl').textContent='Which one belongs?';
+  // "Which one does NOT belong?" — show 4 items, 3 are same category, 1 is the odd one out
+  var VOCAB_ODD=[
+    {q:'Which does NOT belong?',hint:'Three are animals, one is not.',
+     items:[{e:'dog',l:'Dog'},{e:'cat',l:'Cat'},{e:'apple',l:'Apple',odd:true},{e:'bird',l:'Bird'}]},
+    {q:'Which does NOT belong?',hint:'Three can fly, one cannot.',
+     items:[{e:'bird',l:'Bird'},{e:'butterfly',l:'Butterfly'},{e:'plane',l:'Plane'},{e:'fish',l:'Fish',odd:true}]},
+    {q:'Which does NOT belong?',hint:'Three are fruits, one is not.',
+     items:[{e:'apple',l:'Apple'},{e:'banana',l:'Banana'},{e:'dog',l:'Dog',odd:true},{e:'strawberry',l:'Strawberry'}]},
+    {q:'Which does NOT belong?',hint:'Three live in water, one does not.',
+     items:[{e:'fish',l:'Fish'},{e:'frog',l:'Frog'},{e:'crocodile',l:'Crocodile'},{e:'elephant',l:'Elephant',odd:true}]},
+    {q:'Which does NOT belong?',hint:'Three are vehicles, one is not.',
+     items:[{e:'car',l:'Car'},{e:'cat',l:'Cat',odd:true},{e:'plane',l:'Plane'},{e:'train',l:'Train'}]},
+    {q:'Which does NOT belong?',hint:'Three are things you write with, one is not.',
+     items:[{e:'pencil',l:'Pencil'},{e:'book',l:'Book',odd:true},{e:'pencil',l:'Pen'},{e:'pencil',l:'Crayon'}]},
+    {q:'Which does NOT belong?',hint:'Three are insects, one is not.',
+     items:[{e:'ant',l:'Ant'},{e:'bee',l:'Bee'},{e:'butterfly',l:'Butterfly'},{e:'fish',l:'Fish',odd:true}]},
+    {q:'Which does NOT belong?',hint:'Three are farm animals, one is not.',
+     items:[{e:'cow',l:'Cow'},{e:'pig',l:'Pig'},{e:'sheep',l:'Sheep'},{e:'fish',l:'Fish',odd:true}]},
+  ];
+  var item=rnd(VOCAB_ODD);
+  curHint=item.hint;
+  document.getElementById('pz-ttl').textContent=item.q;
   var grid=document.createElement('div');grid.className='pz-opts';
   shuf(item.items.slice()).forEach(function(opt){
     var d=document.createElement('div');d.className='opt';
-    d.innerHTML=twImg(opt.e,44)+'<div style="font-size:12px;font-weight:800">'+opt.l+'</div>';
-    d.onclick=function(){lockOpts(grid);if(opt.c){d.classList.add('correct');setTimeout(onCorrect,350);}else{d.classList.add('wrong');setTimeout(onWrong,300);}};
+    // Use large emoji text fallback + image
+    d.innerHTML=twImg(opt.e,52)+'<div style="font-size:13px;font-weight:900;margin-top:4px">'+opt.l+'</div>';
+    d.onclick=function(){
+      lockOpts(grid);
+      if(opt.odd){
+        d.classList.add('correct');
+        setTimeout(onCorrect,350);
+      } else {
+        d.classList.add('wrong');
+        // Highlight the odd one out
+        grid.querySelectorAll('.opt').forEach(function(o,i){
+          if(item.items.find(function(x){return x.odd;})&&o!==d){
+            var matchOpt=shuf(item.items.slice())[i];
+          }
+        });
+        setTimeout(onWrong,300);
+      }
+    };
     grid.appendChild(d);
   });
   body.appendChild(grid);
 }
-
 function bMatch(body){
   curHint='Find matching picture and word!';
   document.getElementById('pz-ttl').textContent='Match picture to word!';
@@ -1342,40 +1526,92 @@ function bOpposite(body){
 }
 
 function bDrag(body){
-  curHint='Drag each picture to its matching word!';
-  document.getElementById('pz-ttl').textContent='Drag and Match!';
+  // Tap-to-match: tap a picture, then tap its matching word
+  curHint='Tap a picture, then tap its matching word!';
+  document.getElementById('pz-ttl').textContent='Tap to Match!';
   var pool=shuf(PD.drag.pairs.slice()).slice(0,3);
-  var matched=0,dragItem=null;
-  var src=document.createElement('div');src.className='drag-src';
-  pool.forEach(function(p,i){
-    var item=document.createElement('div');item.className='di';item.dataset.p=i;item.draggable=true;
-    item.innerHTML=twImg(p.e,36)+'<div class="di-lbl">'+p.w+'</div>';
-    item.addEventListener('dragstart',function(e){dragItem=item;item.classList.add('drag');e.dataTransfer.setData('text/plain',i);});
-    item.addEventListener('dragend',function(){if(dragItem)dragItem.classList.remove('drag');dragItem=null;});
-    src.appendChild(item);
-  });
-  body.appendChild(src);
-  pool.forEach(function(p,i){
-    var dz=document.createElement('div');dz.className='dz';dz.dataset.p=i;
-    dz.innerHTML='<div class="dz-slot" id="dzs'+i+'"></div><div class="dz-lbl">'+p.w+'</div><div class="dz-ck">ok</div>';
-    dz.addEventListener('dragover',function(e){e.preventDefault();});
-    dz.addEventListener('dragenter',function(){dz.classList.add('over');});
-    dz.addEventListener('dragleave',function(){dz.classList.remove('over');});
-    dz.addEventListener('drop',function(e){
-      e.preventDefault();dz.classList.remove('over');
-      var pi=parseInt(e.dataTransfer.getData('text/plain'));
-      if(pi===i){
-        dz.classList.add('ok');var sl=dz.querySelector('.dz-slot');if(sl)sl.innerHTML=twImg(p.e,38);
-        if(dragItem){dragItem.classList.add('placed');dragItem.style.opacity='0.15';dragItem.style.pointerEvents='none';}
-        snd('click');matched++;if(matched>=pool.length)setTimeout(onCorrect,350);
-      } else {
-        dz.classList.add('err');setTimeout(function(){dz.classList.remove('err');},400);onWrong();
-      }
-    });
-    body.appendChild(dz);
-  });
-}
+  var matched=0,selectedPic=null;
 
+  var instr=document.createElement('div');
+  instr.style.cssText='font-size:12px;font-weight:800;color:rgba(255,255,255,.45);text-align:center;margin-bottom:4px';
+  instr.textContent='Tap a picture, then tap its word';
+  body.appendChild(instr);
+
+  // Two columns: pictures left, words right
+  var cols=document.createElement('div');
+  cols.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:340px';
+  var picCol=document.createElement('div');picCol.style.cssText='display:flex;flex-direction:column;gap:8px';
+  var wordCol=document.createElement('div');wordCol.style.cssText='display:flex;flex-direction:column;gap:8px';
+
+  var picCards=[];
+  var wordCards=[];
+  var shuffledWords=shuf(pool.slice());
+
+  pool.forEach(function(p,i){
+    // Picture card
+    var pc=document.createElement('div');
+    pc.style.cssText='background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);border-radius:13px;padding:10px 8px;cursor:pointer;text-align:center;transition:all .15s;';
+    pc.innerHTML=twImg(p.e,48)+'<div style="font-size:9px;font-weight:800;color:rgba(255,255,255,.5);margin-top:3px">'+p.w+'</div>';
+    pc.dataset.idx=i;
+    pc.onclick=function(){
+      if(pc.classList.contains('correct'))return;
+      picCards.forEach(function(c){c.style.borderColor='rgba(255,255,255,.12)';c.style.background='rgba(255,255,255,.06)';});
+      selectedPic=i;
+      pc.style.borderColor='#a855f7';
+      pc.style.background='rgba(168,85,247,.15)';
+    };
+    picCards.push(pc);
+    picCol.appendChild(pc);
+  });
+
+  shuffledWords.forEach(function(p){
+    var realIdx=pool.findIndex(function(x){return x.w===p.w;});
+    var wc=document.createElement('div');
+    wc.style.cssText='background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);border-radius:13px;padding:14px 8px;cursor:pointer;text-align:center;font-size:14px;font-weight:900;color:#fff;transition:all .15s;display:flex;align-items:center;justify-content:center;';
+    wc.textContent=p.w;
+    wc.dataset.idx=realIdx;
+    wc.onclick=function(){
+      if(wc.classList.contains('correct'))return;
+      if(selectedPic===null){instr.textContent='Tap a picture first!';instr.style.color='#ff9966';return;}
+      if(selectedPic===realIdx){
+        // Correct match
+        picCards[selectedPic].style.borderColor='#00d4ff';
+        picCards[selectedPic].style.background='rgba(0,212,255,.1)';
+        picCards[selectedPic].style.pointerEvents='none';
+        wc.style.borderColor='#00d4ff';
+        wc.style.background='rgba(0,212,255,.1)';
+        wc.style.pointerEvents='none';
+        wc.classList.add('correct');
+        picCards[selectedPic].classList.add('correct');
+        selectedPic=null;
+        instr.textContent='Great match! Keep going!';
+        instr.style.color='#00d4ff';
+        snd('click');
+        matched++;
+        if(matched>=pool.length)setTimeout(onCorrect,400);
+      } else {
+        // Wrong
+        wc.style.borderColor='#ff4455';
+        wc.style.background='rgba(255,68,85,.12)';
+        setTimeout(function(){
+          wc.style.borderColor='rgba(255,255,255,.12)';
+          wc.style.background='rgba(255,255,255,.06)';
+        },600);
+        picCards.forEach(function(c){c.style.borderColor='rgba(255,255,255,.12)';c.style.background='rgba(255,255,255,.06)';});
+        selectedPic=null;
+        instr.textContent='Not quite — try again!';
+        instr.style.color='#ff9966';
+        onWrong();
+      }
+    };
+    wordCards.push(wc);
+    wordCol.appendChild(wc);
+  });
+
+  cols.appendChild(picCol);
+  cols.appendChild(wordCol);
+  body.appendChild(cols);
+}
 function bRhyme(body){
   var item=rnd(PD.rhyme);curHint='Listen for the same ending sound as: '+item.w;
   document.getElementById('pz-ttl').textContent='Which rhymes with "'+item.w+'"?';
@@ -1627,6 +1863,68 @@ function confirmExitQuest(){
 }
 
 
+function initThumbstick(){
+  var base=document.getElementById('thumbstick-base');
+  var knob=document.getElementById('thumbstick-knob');
+  if(!base||!knob)return;
+  var baseR=65,knobR=27,maxDist=45;
+  var touching=false,startX=0,startY=0,baseX=0,baseY=0;
+  var DEAD=0.18; // deadzone
+
+  function getRect(){return base.getBoundingClientRect();}
+
+  function setKnob(dx,dy){
+    var dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist>maxDist){dx=dx/dist*maxDist;dy=dy/dist*maxDist;}
+    knob.style.left=(65+dx)+'px';
+    knob.style.top=(65+dy)+'px';
+    knob.style.transform='translate(-50%,-50%)';
+    // Update movement directions
+    var nx=dx/maxDist,ny=dy/maxDist;
+    G.dp_l=nx<-DEAD;G.dp_r=nx>DEAD;
+    G.dp_u=ny<-DEAD;G.dp_d=ny>DEAD;
+  }
+
+  function resetKnob(){
+    knob.style.left='50%';knob.style.top='50%';
+    knob.style.transform='translate(-50%,-50%)';
+    G.dp_l=G.dp_r=G.dp_u=G.dp_d=false;
+  }
+
+  base.addEventListener('touchstart',function(e){
+    e.preventDefault();
+    var t=e.touches[0];
+    var r=getRect();
+    baseX=r.left+r.width/2;baseY=r.top+r.height/2;
+    touching=true;
+    setKnob(t.clientX-baseX,t.clientY-baseY);
+  },{passive:false});
+
+  base.addEventListener('touchmove',function(e){
+    e.preventDefault();
+    if(!touching)return;
+    var t=e.touches[0];
+    setKnob(t.clientX-baseX,t.clientY-baseY);
+  },{passive:false});
+
+  base.addEventListener('touchend',function(e){
+    e.preventDefault();
+    touching=false;resetKnob();
+  },{passive:false});
+
+  base.addEventListener('touchcancel',function(){touching=false;resetKnob();});
+
+  // Mouse support (desktop)
+  base.addEventListener('mousedown',function(e){
+    var r=getRect();baseX=r.left+r.width/2;baseY=r.top+r.height/2;
+    touching=true;setKnob(e.clientX-baseX,e.clientY-baseY);
+  });
+  window.addEventListener('mousemove',function(e){
+    if(!touching)return;setKnob(e.clientX-baseX,e.clientY-baseY);
+  });
+  window.addEventListener('mouseup',function(){if(touching){touching=false;resetKnob();}});
+}
+
 window.addEventListener('load',function(){
   document.addEventListener('click',function(){try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}},{once:true});
   document.addEventListener('touchstart',function(){try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}},{once:true});
@@ -1637,9 +1935,7 @@ window.addEventListener('load',function(){
     initFloor(0);
     updateHUD();updateAv();
     document.getElementById('hero-name').textContent=G.avatar.name.toUpperCase().slice(0,9);
-    bindDP('dp-u','dp_u');bindDP('dp-d','dp_d');bindDP('dp-l','dp_l');bindDP('dp-r','dp_r');
-    document.getElementById('dp-c').addEventListener('click',doAttack);
-    document.getElementById('dp-c').addEventListener('touchstart',function(e){e.preventDefault();doAttack();},{passive:false});
+    initThumbstick();
     G.gameStartTime=performance.now();
     lastAnimT=performance.now();
     requestAnimationFrame(gameLoop);
