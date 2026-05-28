@@ -671,9 +671,13 @@ html,body{height:100%;overflow:hidden;font-family:'Nunito',sans-serif;background
    <div class="chip" onclick="setLangCat('location',this)">📍 Where?</div>
    <div class="chip" onclick="setLangCat('describe',this)">💬 Describe</div>
   </div>
-  <div style="width:100%;max-width:340px;height:180px;border-radius:var(--ra);overflow:hidden;border:3px solid var(--bd);background:#FFFBF5;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-   <div id="lang-scene-wrap"></div>
+  <div style="width:100%;max-width:340px;min-height:180px;border-radius:var(--ra);overflow:hidden;border:3px solid var(--bd);background:#FFFBF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative">
+   <div id="lang-scene-wrap" style="width:100%;display:flex;align-items:center;justify-content:center"></div>
    <img id="lang-scene" src="" style="width:160px;height:160px;object-fit:contain">
+   <div id="lang-img-loading" style="display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px">
+    <div class="story-spinner"></div>
+    <div style="font-size:11px;font-weight:800;color:var(--mu)">🎨 Painting…</div>
+   </div>
   </div>
   <div style="font-size:12px;font-weight:700;color:var(--mu);text-align:center" id="lang-scene-desc"></div>
   <div style="font-size:17px;font-weight:900;text-align:center;padding:0 8px;line-height:1.3" id="lang-q"></div>
@@ -683,7 +687,10 @@ html,body{height:100%;overflow:hidden;font-family:'Nunito',sans-serif;background
    <div class="sp-result" id="lang-sp-res"></div>
   </div>
   <div class="feedback" id="lang-fb"></div>
-  <div style="font-size:11px;font-weight:800;color:var(--mu)" id="lang-prog">Question 1 of 5</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:340px">
+   <div style="font-size:11px;font-weight:800;color:var(--mu)" id="lang-prog">Question 1 of 5</div>
+   <button id="lang-ai-btn" onclick="generateLangImage()" style="padding:5px 12px;border-radius:20px;background:linear-gradient(135deg,var(--or),var(--ye));border:none;font-size:11px;font-weight:900;cursor:pointer;color:#fff;font-family:Nunito,sans-serif">✨ AI Pic</button>
+  </div>
   <button class="btn" style="background:#FFF0F5;color:var(--pk);border:2px solid var(--pk)" onclick="nextLangQ();playSound('click')">Next question →</button>
  </div>
 </div>
@@ -1481,7 +1488,23 @@ function renderLangQ(){
   const arr=LANG_SCENES[langCat];const q=arr[langIdx%arr.length];langAnswered=false;
   const _sceneEl=document.getElementById('lang-scene');
   const _sceneWrap=document.getElementById('lang-scene-wrap');
-  if(q.scene){
+  const _langLoading=document.getElementById('lang-img-loading');
+  if(_langLoading)_langLoading.style.display='none';
+  const _langAiBtn=document.getElementById('lang-ai-btn');
+  if(_langAiBtn){_langAiBtn.disabled=false;_langAiBtn.textContent='✨ AI Pic';_langAiBtn.style.opacity='1';}
+  // Try loading cached AI image for this question
+  const _langCacheKey='sprout-img-lang-'+langCat+'-'+(langIdx%arr.length);
+  const _langCached=localStorage.getItem(_langCacheKey);
+  if(_langCached&&_sceneWrap){
+    if(_sceneEl)_sceneEl.style.display='none';
+    _sceneWrap.style.display='flex';
+    const _cImg=document.createElement('img');
+    _cImg.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:inherit';
+    _cImg.src=_langCached;
+    _sceneWrap.innerHTML='';
+    _sceneWrap.appendChild(_cImg);
+    if(_langAiBtn){_langAiBtn.textContent='✨ Repaint';}
+  } else if(q.scene){
     if(_sceneEl)_sceneEl.style.display='none';
     if(_sceneWrap)_sceneWrap.innerHTML='<div style="font-size:72px;line-height:1.2;text-align:center;letter-spacing:4px;padding:8px">'+q.scene+'</div>';
   } else {
@@ -1556,11 +1579,21 @@ function renderStory(){
   const s=STORIES[storyIdx];
   const inner=document.getElementById('story-img-inner');
   const loading=document.getElementById('story-img-loading');
-  if(inner){inner.style.display='flex';inner.innerHTML='<div style="font-size:80px;padding:20px;text-align:center">'+s.scene+'</div>';}
   if(loading)loading.style.display='none';
   document.getElementById('story-text').innerHTML=s.text;
-  const aib=document.getElementById('story-ai-btn');
-  if(aib){aib.disabled=false;aib.textContent='✨ AI Picture';aib.style.opacity='1';}
+  // Try loading cached AI image first
+  const cached=localStorage.getItem('sprout-img-story-'+storyIdx);
+  if(cached&&inner){
+    inner.style.display='flex';inner.style.padding='0';inner.innerHTML='';
+    const img=document.createElement('img');img.className='story-ai-img';img.src=cached;
+    inner.appendChild(img);
+    const aib=document.getElementById('story-ai-btn');
+    if(aib){aib.disabled=false;aib.textContent='✨ Repaint';aib.style.opacity='1';}
+  } else {
+    if(inner){inner.style.display='flex';inner.innerHTML='<div style="font-size:80px;padding:20px;text-align:center">'+s.scene+'</div>';}
+    const aib=document.getElementById('story-ai-btn');
+    if(aib){aib.disabled=false;aib.textContent='✨ AI Picture';aib.style.opacity='1';}
+  }
   storyQIdx=0;renderStoryQ(s);
 }
 function renderStoryQ(s){
@@ -1583,6 +1616,103 @@ function playStory(){
   if('speechSynthesis' in window){const t=document.getElementById('story-text').textContent;const u=new SpeechSynthesisUtterance(t);u.lang='en-AU';u.rate=0.85;u.pitch=1.1;speechSynthesis.speak(u);showToast('🔊 Reading story...');}
   else showToast('Audio not available');
 }
+
+// ── SCENE & LANGUAGE AI IMAGE ──────────────────────────────
+async function generateLangImage(){
+  const arr = LANG_SCENES[langCat];
+  const q   = arr[langIdx % arr.length];
+  const btn   = document.getElementById('lang-ai-btn');
+  const wrap  = document.getElementById('lang-scene-wrap');
+  const imgEl = document.getElementById('lang-scene');
+  const loading = document.getElementById('lang-img-loading');
+
+  if(btn){btn.disabled=true;btn.textContent='Painting…';btn.style.opacity='.6';}
+  if(loading)loading.style.display='flex';
+  if(wrap){wrap.style.display='none';}
+  if(imgEl)imgEl.style.display='none';
+
+  const DEEPAI_KEY='f21af44b-eff8-4200-b6fb-6ec492a7cd99';
+
+  try{
+    // Step 1: Claude writes a cartoon illustration prompt for the scene
+    let fullPrompt = q.desc+', children\'s cartoon illustration, bright colours, cute characters';
+    try{
+      const cr = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true'
+        },
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:60,
+          messages:[{role:'user',content:"Write a short image prompt (max 30 words) for a children's cartoon illustration of: \""+q.desc+"\". Describe the character, action and setting. Reply with ONLY the prompt."}]
+        })
+      });
+      if(cr.ok){
+        const cd=await cr.json();
+        const base=(cd.content&&cd.content[0]&&cd.content[0].text||'').trim();
+        if(base) fullPrompt=base+', children\'s picture book illustration, bright cartoon art, cute friendly characters, vibrant colours, no text';
+      }
+    }catch(e){}
+
+    // Step 2: DeepAI
+    const fd = new FormData();
+    fd.append('text', fullPrompt);
+    fd.append('width','512');
+    fd.append('height','512');
+
+    const dr = await fetch('https://api.deepai.org/api/text2img',{
+      method:'POST',
+      headers:{'api-key':DEEPAI_KEY},
+      body:fd
+    });
+    if(!dr.ok) throw new Error('DeepAI HTTP '+dr.status);
+    const dd = await dr.json();
+    const imgUrl = dd.output_url;
+    if(!imgUrl) throw new Error('No output_url');
+
+    // Step 3: Show image
+    const img = new Image();
+    img.style.cssText='width:100%;height:100%;object-fit:cover;display:block';
+    img.alt = q.desc;
+    const timer = setTimeout(function(){_langImgFallback(q,wrap,imgEl,loading,btn);},30000);
+    img.onload = function(){
+      clearTimeout(timer);
+      if(loading)loading.style.display='none';
+      if(wrap){wrap.style.display='flex';wrap.innerHTML='';wrap.appendChild(img);}
+      if(btn){btn.disabled=false;btn.textContent='✨ Repaint';btn.style.opacity='1';}
+      // Cache the image
+      try{
+        var cv2=document.createElement('canvas');cv2.width=img.naturalWidth||512;cv2.height=img.naturalHeight||512;
+        cv2.getContext('2d').drawImage(img,0,0);
+        var b64=cv2.toDataURL('image/jpeg',0.82);
+        localStorage.setItem('sprout-img-lang-'+langCat+'-'+langIdx,b64);
+      }catch(e){}
+    };
+    img.onerror = function(){clearTimeout(timer);_langImgFallback(q,wrap,imgEl,loading,btn);};
+    img.src = imgUrl;
+
+  }catch(e){
+    console.error('generateLangImage error:',e);
+    _langImgFallback(q,wrap,imgEl,loading,btn);
+  }
+}
+
+function _langImgFallback(q,wrap,imgEl,loading,btn){
+  if(loading)loading.style.display='none';
+  // Restore original scene emoji display
+  if(wrap){
+    wrap.style.display='flex';
+    if(q.scene){
+      wrap.innerHTML='<div style="font-size:72px;line-height:1.2;text-align:center;letter-spacing:4px;padding:8px">'+q.scene+'</div>';
+    } else {
+      wrap.innerHTML='';
+      if(imgEl){imgEl.style.display='';imgEl.src=twUrl(q.e);}
+    }
+  }
+  if(btn){btn.disabled=false;btn.textContent='✨ Try again';btn.style.opacity='1';}
+  showToast('Image unavailable — try again');
+}
+
 async function generateStoryImage(){
   const s=STORIES[storyIdx];
   const aib=document.getElementById('story-ai-btn');
@@ -1651,6 +1781,13 @@ async function generateStoryImage(){
       if(loading)loading.style.display='none';
       if(inner){inner.style.display='flex';inner.style.padding='0';inner.innerHTML='';inner.appendChild(img);}
       if(aib){aib.disabled=false;aib.textContent='✨ Repaint';aib.style.opacity='1';}
+      // Cache the image as base64 for future sessions
+      try{
+        var cv2=document.createElement('canvas');cv2.width=img.naturalWidth||512;cv2.height=img.naturalHeight||512;
+        cv2.getContext('2d').drawImage(img,0,0);
+        var b64=cv2.toDataURL('image/jpeg',0.82);
+        localStorage.setItem('sprout-img-story-'+storyIdx,b64);
+      }catch(e){}
     };
     img.onerror=function(){clearTimeout(timer);_storyFallback(s,inner,loading,aib,'Image load failed');};
     img.src=imgUrl;
