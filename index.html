@@ -117,6 +117,12 @@ html,body{height:100%;overflow:hidden;font-family:'Nunito',sans-serif;background
 .sess-item{background:#fff;border:2px solid var(--bd);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px}
 .sess-thumb{width:36px;height:36px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
+
+/* ── STORY AI ── */
+.story-spinner{width:36px;height:36px;border:4px solid rgba(255,146,43,.2);border-top-color:var(--or);border-radius:50%;animation:spin .8s linear infinite}
+.story-ai-img{width:100%;height:100%;object-fit:cover;display:block}
+.story-book-card{width:100%;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;background:linear-gradient(160deg,#FFF8F0,#F5EEFF)}
+.story-book-scene{font-size:76px;line-height:1.1;margin-bottom:6px}
 /* ── SPLASH LOADER ── */
 #sprout-splash{
   position:fixed;inset:0;z-index:9999;
@@ -685,17 +691,27 @@ html,body{height:100%;overflow:hidden;font-family:'Nunito',sans-serif;background
 <!-- ===== STORY ===== -->
 <div class="sc" id="s-story">
  <div class="tb"><span class="tb-back" onclick="goBack('s-story')">←</span><span class="tb-title">📖 Story Time</span><span class="tb-badge">⭐ +35</span></div>
- <div class="act-body">
-  <div style="background:#fff;border-radius:var(--ra);border:2px solid var(--bd);padding:18px;width:100%;max-width:340px;text-align:center">
-   <div style="font-size:72px;margin-bottom:8px" id="story-scene"></div>
-   <div style="font-size:15px;font-weight:700;line-height:1.65" id="story-text"></div>
+ <div class="act-body" style="gap:12px">
+  <div id="story-img-card" style="width:100%;max-width:360px;border-radius:20px;overflow:hidden;border:3px solid var(--bd);background:#fff;position:relative;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center">
+   <div id="story-img-inner" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:0">
+    <div style="font-size:80px;padding:20px;text-align:center" id="story-scene"></div>
+   </div>
+   <div id="story-img-loading" style="display:none;position:absolute;inset:0;background:linear-gradient(135deg,#FFF5EE,#F5F0FF);flex-direction:column;align-items:center;justify-content:center;gap:10px">
+    <div class="story-spinner"></div>
+    <div style="font-size:12px;font-weight:800;color:var(--mu)">🎨 Creating your picture…</div>
+   </div>
   </div>
-  <button style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--pu),var(--bl));border:none;font-size:22px;cursor:pointer;color:#fff" onclick="playStory()">▶</button>
+  <div style="background:#fff;border-radius:var(--ra);border:2px solid var(--bd);padding:16px 18px;width:100%;max-width:360px">
+   <div style="font-size:15px;font-weight:700;line-height:1.7;color:var(--tx)" id="story-text"></div>
+  </div>
+  <div style="display:flex;gap:10px;width:100%;max-width:360px">
+   <button style="flex:1;height:44px;border-radius:22px;background:linear-gradient(135deg,var(--pu),var(--bl));border:none;font-size:13px;font-weight:900;cursor:pointer;color:#fff;font-family:Nunito,sans-serif" onclick="playStory()">🔊 Read aloud</button>
+   <button id="story-ai-btn" style="flex:1;height:44px;border-radius:22px;background:linear-gradient(135deg,var(--or),var(--ye));border:none;font-size:13px;font-weight:900;cursor:pointer;color:#fff;font-family:Nunito,sans-serif" onclick="generateStoryImage()">✨ AI Picture</button>
+  </div>
   <div style="font-size:13px;font-weight:800;color:var(--mu)">Answer these questions:</div>
-  <div id="story-opts" style="width:100%;max-width:340px;display:flex;flex-direction:column;gap:8px"></div>
-  <button class="btn btn-pu" onclick="nextStory();playSound('click')">Next story →</button>
+  <div id="story-opts" style="width:100%;max-width:360px;display:flex;flex-direction:column;gap:8px"></div>
+  <button class="btn btn-pu" style="width:100%;max-width:360px" onclick="nextStory();playSound('click')">Next story →</button>
  </div>
-</div>
 
 <!-- ===== DRAW ===== -->
 <div class="sc" id="s-draw">
@@ -1535,29 +1551,95 @@ const STORIES=[
   {scene:'🚀🌙⭐',text:'<strong>Captain Koala</strong> climbed into the rocket ship. She counted to 10 and then — <strong>ZOOM!</strong> — she blasted off into the starry sky!',qs:[{q:'Where did Captain Koala go?',opts:['Into the ocean','Up into the sky','Into the jungle','Underground'],ans:1},{q:'What did she do before blasting off?',opts:['She ate lunch','She counted to 10','She called her mum','She went to sleep'],ans:1}]}
 ];
 let storyIdx=0,storyQIdx=0;
-function initStory(){storyIdx=0;storyQIdx=0;renderStory()}
+function initStory(){storyIdx=0;storyQIdx=0;renderStory();}
 function renderStory(){
   const s=STORIES[storyIdx];
-  document.getElementById('story-scene').textContent=s.scene;
+  const inner=document.getElementById('story-img-inner');
+  const loading=document.getElementById('story-img-loading');
+  if(inner){inner.style.display='flex';inner.innerHTML='<div style="font-size:80px;padding:20px;text-align:center">'+s.scene+'</div>';}
+  if(loading)loading.style.display='none';
   document.getElementById('story-text').innerHTML=s.text;
+  const aib=document.getElementById('story-ai-btn');
+  if(aib){aib.disabled=false;aib.textContent='✨ AI Picture';aib.style.opacity='1';}
   storyQIdx=0;renderStoryQ(s);
 }
 function renderStoryQ(s){
   const el=document.getElementById('story-opts');el.innerHTML='';
-  if(!s.qs[storyQIdx])return;const q=s.qs[storyQIdx];
+  if(!s.qs[storyQIdx])return;
+  const q=s.qs[storyQIdx];
   const qd=document.createElement('div');qd.style.cssText='font-size:15px;font-weight:900;text-align:center;margin-bottom:6px';qd.textContent=q.q;el.appendChild(qd);
-  q.opts.forEach((o,i)=>{
-    const btn=document.createElement('div');btn.className='opt';btn.style.justifyContent='flex-start';btn.innerHTML=`<div style="font-size:14px;font-weight:700">${o}</div>`;
-    btn.onclick=()=>{
-      document.querySelectorAll('#story-opts .opt').forEach(b=>b.style.pointerEvents='none');
-      if(i===q.ans){btn.classList.add('correct');playSound('correct');setTimeout(()=>{storyQIdx++;if(storyQIdx<s.qs.length){renderStoryQ(s)}else{celebrate('📖','Story complete!','You understood the whole story!',35)}},500)}
-      else{btn.classList.add('wrong');playSound('wrong');document.querySelectorAll('#story-opts .opt')[q.ans].classList.add('correct')}
-    };
-    el.appendChild(btn);
+  q.opts.forEach(function(o,i){
+    const btn=document.createElement('div');btn.className='opt';btn.style.justifyContent='flex-start';
+    btn.innerHTML='<div style="font-size:14px;font-weight:700">'+o+'</div>';
+    btn.onclick=function(){
+      document.querySelectorAll('#story-opts .opt').forEach(function(b){b.style.pointerEvents='none';});
+      if(i===q.ans){btn.classList.add('correct');playSound('correct');setTimeout(function(){storyQIdx++;if(storyQIdx<s.qs.length)renderStoryQ(s);else celebrate('📖','Story complete!','You understood the whole story!',35);},500);}
+      else{btn.classList.add('wrong');playSound('wrong');document.querySelectorAll('#story-opts .opt')[q.ans].classList.add('correct');}
+    };el.appendChild(btn);
   });
 }
-function nextStory(){storyIdx=(storyIdx+1)%STORIES.length;renderStory();playSound('click')}
-function playStory(){if('speechSynthesis' in window){const t=document.getElementById('story-text').textContent;const u=new SpeechSynthesisUtterance(t);u.lang='en-AU';u.rate=0.85;u.pitch=1.1;speechSynthesis.speak(u);showToast('🔊 Reading story...')}else showToast('Audio not available')}
+function nextStory(){storyIdx=(storyIdx+1)%STORIES.length;renderStory();playSound('click');}
+function playStory(){
+  if('speechSynthesis' in window){const t=document.getElementById('story-text').textContent;const u=new SpeechSynthesisUtterance(t);u.lang='en-AU';u.rate=0.85;u.pitch=1.1;speechSynthesis.speak(u);showToast('🔊 Reading story...');}
+  else showToast('Audio not available');
+}
+async function generateStoryImage(){
+  const s=STORIES[storyIdx];
+  const aib=document.getElementById('story-ai-btn');
+  const inner=document.getElementById('story-img-inner');
+  const loading=document.getElementById('story-img-loading');
+  if(aib){aib.disabled=true;aib.textContent='Painting\u2026';aib.style.opacity='.6';}
+  if(loading)loading.style.display='flex';
+  if(inner)inner.style.display='none';
+  try{
+    // Step 1: Claude writes a vivid cartoon-style prompt
+    const storyText=document.getElementById('story-text').textContent;
+    const claudeResp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:80,
+        messages:[{role:'user',content:"Write a short image generation prompt (max 40 words) for this children's story scene: \""+storyText+"\". The image must be a bright colourful cartoon illustration like a children's picture book. Describe the character and setting clearly. Reply with ONLY the prompt."}]
+      })
+    });
+    const claudeData=await claudeResp.json();
+    const basePrompt=((claudeData.content&&claudeData.content[0]&&claudeData.content[0].text)||storyText).trim();
+    const fullPrompt=basePrompt+', children\'s picture book illustration, bright cartoon art, cute friendly characters, vibrant colours, clean lines';
+
+    // Step 2: Call DeepAI text2img API
+    const DEEPAI_KEY='f21af44b-eff8-4200-b6fb-6ec492a7cd99'; // <-- replace with your key from deepai.org/dashboard
+    const formData=new FormData();
+    formData.append('text',fullPrompt);
+    formData.append('width','512');
+    formData.append('height','512');
+
+    const deepResp=await fetch('https://api.deepai.org/api/text2img',{
+      method:'POST',
+      headers:{'api-key':DEEPAI_KEY},
+      body:formData
+    });
+    const deepData=await deepResp.json();
+    const imgUrl=deepData.output_url;
+    if(!imgUrl)throw new Error('No output_url in response');
+
+    // Step 3: Show the image
+    const img=new Image();img.className='story-ai-img';img.alt='Story scene';
+    img.crossOrigin='anonymous';
+    const timer=setTimeout(function(){_storyFallback(s,inner,loading,aib);},30000);
+    img.onload=function(){
+      clearTimeout(timer);
+      if(loading)loading.style.display='none';
+      if(inner){inner.style.display='flex';inner.style.padding='0';inner.innerHTML='';inner.appendChild(img);}
+      if(aib){aib.disabled=false;aib.textContent='✨ Repaint';aib.style.opacity='1';}
+    };
+    img.onerror=function(){clearTimeout(timer);_storyFallback(s,inner,loading,aib);};
+    img.src=imgUrl;
+  }catch(e){_storyFallback(s,inner,loading,aib);}
+}
+function _storyFallback(s,inner,loading,btn){
+  if(loading)loading.style.display='none';
+  if(inner){inner.style.display='flex';inner.style.padding='0';inner.innerHTML='<div class="story-book-card" style="width:100%"><div class="story-book-scene">'+s.scene+'</div></div>';}
+  if(btn){btn.disabled=false;btn.textContent='✨ Try again';btn.style.opacity='1';}
+  showToast('Image unavailable \u2014 try again');
+}
 
 // ============================================================
 // DRAWING
