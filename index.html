@@ -1591,21 +1591,36 @@ async function generateStoryImage(){
   if(aib){aib.disabled=true;aib.textContent='Painting\u2026';aib.style.opacity='.6';}
   if(loading)loading.style.display='flex';
   if(inner)inner.style.display='none';
-  try{
-    // Step 1: Claude writes a vivid cartoon-style prompt
-    const storyText=document.getElementById('story-text').textContent;
-    const claudeResp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:80,
-        messages:[{role:'user',content:"Write a short image generation prompt (max 40 words) for this children's story scene: \""+storyText+"\". The image must be a bright colourful cartoon illustration like a children's picture book. Describe the character and setting clearly. Reply with ONLY the prompt."}]
-      })
-    });
-    const claudeData=await claudeResp.json();
-    const basePrompt=((claudeData.content&&claudeData.content[0]&&claudeData.content[0].text)||storyText).trim();
-    const fullPrompt=basePrompt+', children\'s picture book illustration, bright cartoon art, cute friendly characters, vibrant colours, clean lines';
 
-    // Step 2: Call DeepAI text2img API
-    const DEEPAI_KEY='f21af44b-eff8-4200-b6fb-6ec492a7cd99'; // <-- replace with your key from deepai.org/dashboard
+  const DEEPAI_KEY='f21af44b-eff8-4200-b6fb-6ec492a7cd99';
+
+  try{
+    const storyText=document.getElementById('story-text').textContent;
+
+    // Step 1: Claude writes the cartoon prompt
+    // Requires anthropic-dangerous-direct-browser-access header for browser calls
+    let fullPrompt=storyText+', children\'s picture book illustration, bright cartoon art, cute friendly characters, vibrant colours, clean lines';
+    try{
+      const claudeResp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true'
+        },
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:80,
+          messages:[{role:'user',content:"Write a short image prompt (max 35 words) for a children's cartoon illustration of: \""+storyText+"\". Describe character and setting. Reply with ONLY the prompt."}]
+        })
+      });
+      if(claudeResp.ok){
+        const cd=await claudeResp.json();
+        const base=(cd.content&&cd.content[0]&&cd.content[0].text||'').trim();
+        if(base)fullPrompt=base+', children\'s picture book illustration, bright cartoon art, cute friendly characters, vibrant colours, clean lines, no text';
+      }
+    }catch(claudeErr){
+      // Claude prompt enhancement failed - use story text directly, still try DeepAI
+    }
+
+    // Step 2: DeepAI text2img
     const formData=new FormData();
     formData.append('text',fullPrompt);
     formData.append('width','512');
@@ -1616,25 +1631,36 @@ async function generateStoryImage(){
       headers:{'api-key':DEEPAI_KEY},
       body:formData
     });
-    const deepData=await deepResp.json();
-    const imgUrl=deepData.output_url;
-    if(!imgUrl)throw new Error('No output_url in response');
 
-    // Step 3: Show the image
+    if(!deepResp.ok){
+      const errText=await deepResp.text();
+      console.warn('DeepAI error '+deepResp.status+':',errText);
+      throw new Error('DeepAI HTTP '+deepResp.status);
+    }
+
+    const deepData=await deepResp.json();
+    console.log('DeepAI response:',deepData);
+    const imgUrl=deepData.output_url;
+    if(!imgUrl)throw new Error('No output_url — '+JSON.stringify(deepData));
+
+    // Step 3: Load and display image
     const img=new Image();img.className='story-ai-img';img.alt='Story scene';
-    img.crossOrigin='anonymous';
-    const timer=setTimeout(function(){_storyFallback(s,inner,loading,aib);},30000);
+    const timer=setTimeout(function(){_storyFallback(s,inner,loading,aib,'Timed out');},35000);
     img.onload=function(){
       clearTimeout(timer);
       if(loading)loading.style.display='none';
       if(inner){inner.style.display='flex';inner.style.padding='0';inner.innerHTML='';inner.appendChild(img);}
       if(aib){aib.disabled=false;aib.textContent='✨ Repaint';aib.style.opacity='1';}
     };
-    img.onerror=function(){clearTimeout(timer);_storyFallback(s,inner,loading,aib);};
+    img.onerror=function(){clearTimeout(timer);_storyFallback(s,inner,loading,aib,'Image load failed');};
     img.src=imgUrl;
-  }catch(e){_storyFallback(s,inner,loading,aib);}
+
+  }catch(e){
+    console.error('generateStoryImage error:',e);
+    _storyFallback(s,inner,loading,aib,e.message);
+  }
 }
-function _storyFallback(s,inner,loading,btn){
+function _storyFallback(s,inner,loading,btn,reason){
   if(loading)loading.style.display='none';
   if(inner){inner.style.display='flex';inner.style.padding='0';inner.innerHTML='<div class="story-book-card" style="width:100%"><div class="story-book-scene">'+s.scene+'</div></div>';}
   if(btn){btn.disabled=false;btn.textContent='✨ Try again';btn.style.opacity='1';}
